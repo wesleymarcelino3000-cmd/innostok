@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inno Stock Online</title>
+<link rel="icon" href="icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<style>
+:root{--bg1:#020617;--bg2:#0f172a;--bg3:#1e3a8a;--blue:#2563eb;--sidebar:#031126}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#111827}
+.hidden{display:none !important}
+.login{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px;background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3))}
+.login-card{width:100%;max-width:430px;background:linear-gradient(145deg,rgba(22,101,52,.96),rgba(21,128,61,.96));border-radius:30px;padding:34px 30px 28px;text-align:center;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.logo-wrap img{max-width:230px;width:100%;height:auto}
+.login-error{display:none;padding:10px 12px;margin-bottom:12px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:12px;font-weight:700}
+.field{text-align:left;margin-bottom:12px}
+.field label{display:block;font-size:14px;font-weight:700;color:#ecfdf5;margin:0 0 6px 2px}
+.field input,.app-input,textarea,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:12px;background:#fff;font:inherit}
+.login-btn,.action,.secondary-action,.warn-action,.success-action,.danger{border:none;border-radius:12px;padding:12px 14px;cursor:pointer;font-weight:700}
+.login-btn,.action{background:#2563eb;color:#fff}
+.secondary-action{background:#dbeafe;color:#1d4ed8}
+.warn-action{background:#f59e0b;color:#fff}
+.success-action{background:#16a34a;color:#fff}
+.danger{background:#fee2e2;color:#991b1b}
+.layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
+.sidebar{background:var(--sidebar);color:#fff;padding:20px;min-height:100vh}
+.sidebar img{height:48px;margin-bottom:10px}
+.sidebar h2{margin:8px 0 4px;font-size:28px}
+.sidebar .sub{color:#cbd5e1;margin-bottom:18px;font-size:18px}
+.user-chip{display:inline-block;padding:10px 16px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;margin-bottom:16px;font-size:18px}
+.sidebar button{width:100%;margin:8px 0;padding:14px 16px;border:none;border-radius:18px;background:#dbeafe;color:#1d4ed8;font-weight:700;cursor:pointer;display:block;text-align:center;font-size:16px}
+.sidebar .logout{background:#0f172a;color:#fff}
+.main{padding:22px;overflow:auto}
+.top-card,.card{background:#fff;padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05);margin-bottom:16px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,1fr)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:900px}
+th,td{padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:left}
+th{background:#f8fafc}
+.notice{padding:12px;border-radius:12px;background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;margin-bottom:12px}
+.warnbox{padding:12px;border-radius:12px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;margin-bottom:12px}
+#reader{width:100%;max-width:520px;margin:0 auto}
+.quick-qty{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.quick-qty button{padding:14px;border:none;border-radius:12px;background:#e0f2fe;color:#075985;font-weight:800;cursor:pointer}
+.big-ok{display:none;margin-top:14px;padding:18px;border-radius:18px;background:#dcfce7;color:#166534;font-size:24px;font-weight:800;text-align:center}
+.big-ok.show{display:block}
+.label-sheet{display:grid;gap:10px}
+.label-card{width:100mm;min-height:150mm;max-width:100mm;border:1px solid #111!important;box-shadow:none!important;border-radius:8px!important;padding:8mm!important;background:#fff}
+.label-main-name{font-size:22px;font-weight:800;line-height:1.1;margin-bottom:8px;text-align:center}
+.label-qty{font-size:20px;font-weight:800;text-align:center;margin-bottom:8px}
+.label-simple-grid{display:grid;grid-template-columns:1fr;gap:10px}
+@media print{
+  @page{size:100mm 150mm;margin:4mm}
+  html,body{margin:0;padding:0;background:#fff}
+  body *{visibility:hidden}
+  #printArea,#printArea *{visibility:visible}
+  #printArea{position:absolute;left:0;top:0;width:100mm;margin:0;padding:0}
+  #printActions{display:none!important}
+  .label-sheet{display:block}
+  .label-card{page-break-after:always;margin:0!important}
+}
+@media(max-width:1100px){.layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}.main{padding:14px}}
+</style>
+</head>
+<body>
+<div id="loginPage" class="login">
+  <div class="login-card">
+    <div class="logo-wrap"><img src="logo.png" alt="Logo"></div>
+    <div id="loginError" class="login-error"></div>
+    <div class="field"><label>Usuário</label><input id="username"></div>
+    <div class="field"><label>Senha</label><input id="password" type="password"></div>
+    <button class="login-btn" onclick="login()">Entrar</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="layout">
+    <div class="sidebar">
+      <img src="logo.png" alt="Logo">
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
+      <div id="userChip" class="user-chip">Usuário</div>
+      <button onclick="showSection('account')">Minha conta</button>
+      <button onclick="showSection('users')">Usuários</button>
+      <button onclick="showSection('produto')">Novo produto</button>
+      <button onclick="showSection('manual')">Baixa manual</button>
+      <button onclick="showSection('estoqueView')">Ver estoque</button>
+      <button onclick="exportarPlanilha()">Exportar planilha</button>
+      <button onclick="showSection('etiquetas')">Etiquetas de estoque</button>
+      <button onclick="showSection('scannerMobile')">Scanner no celular</button>
+      <button class="logout" onclick="logout()">Sair</button>
+    </div>
+
+    <div class="main">
+      <div class="top-card">
+        <h1 style="margin:0 0 6px">Painel de gestão</h1>
+        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+      </div>
+      <div id="notice" class="notice hidden"></div>
+
+      <div class="grid g3">
+        <div class="card"><div>Produtos</div><div id="s1" style="font-size:24px;font-weight:800">0</div></div>
+        <div class="card"><div>Unidades</div><div id="s2" style="font-size:24px;font-weight:800">0</div></div>
+        <div class="card"><div>Baixo estoque</div><div id="s3" style="font-size:24px;font-weight:800">0</div></div>
+      </div>
+
+      <div id="account" class="card hidden">
+        <h3>Minha conta</h3>
+        <div id="accountBlocked" class="warnbox hidden">Somente admin pode alterar usuário e senha.</div>
+        <div id="accountAdminArea">
+          <div class="form-row">
+            <div><label>Nome</label><input class="app-input" id="accNome"></div>
+            <div><label>Usuário</label><input class="app-input" id="accUser"></div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div><label>Senha atual</label><input class="app-input" id="accSenhaAtual" type="password"></div>
+            <div><label>Nova senha</label><input class="app-input" id="accSenhaNova" type="password"></div>
+          </div>
+          <button class="action" style="margin-top:12px" onclick="salvarConta()">Salvar</button>
+        </div>
+      </div>
+
+      <div id="users" class="card hidden">
+        <h3>Usuários</h3>
+        <div id="usersBlocked" class="warnbox hidden">Somente admin pode criar, editar ou excluir usuários.</div>
+        <div id="usersAdminArea">
+          <div class="form-row-3">
+            <div><label>Nome</label><input class="app-input" id="uNome"></div>
+            <div><label>Usuário</label><input class="app-input" id="uUsuario"></div>
+            <div><label>Senha</label><input class="app-input" id="uSenha"></div>
+          </div>
+          <div class="form-row" style="margin-top:12px">
+            <div><label>Nível</label><select id="uRole" class="app-input"><option value="operador">Operador</option><option value="admin">Admin</option></select></div>
+            <div></div>
+          </div>
+          <button class="action" style="margin-top:12px" onclick="criarUsuario()">Cadastrar usuário</button>
+          <div class="wrap" style="margin-top:16px">
+            <table><thead><tr><th>Nome</th><th>Usuário</th><th>Nível</th><th>Ações</th></tr></thead><tbody id="listaUsuarios"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="produto" class="card">
+        <h3>Novo produto</h3>
+        <div class="form-row">
+          <div><label>Nome</label><input class="app-input" id="nome"></div>
+          <div><label>Código de barras</label><input class="app-input" id="codigoBarras"></div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div><label>Categoria</label><input class="app-input" id="categoria"></div>
+          <div><label>Preço</label><input class="app-input" id="preco" type="number" min="0" step="0.01"></div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div><label>Estoque</label><input class="app-input" id="qtd" type="number" min="0"></div>
+          <div><label>Código interno automático</label><input class="app-input" id="codigoInternoPreview" disabled placeholder="Gerado automaticamente"></div>
+        </div>
+        <button class="action" style="margin-top:12px" onclick="add()">Salvar</button>
+      </div>
+
+      <div id="manual" class="card hidden">
+        <h3>Baixa manual</h3>
+        <div class="form-row">
+          <div><label>Produto</label><select id="manualProduto"></select></div>
+          <div><label>Tipo</label><select id="manualTipo"><option value="saida">Saída</option><option value="entrada">Entrada</option></select></div>
+        </div>
+        <label style="margin-top:12px;display:block">Quantidade</label>
+        <input class="app-input" id="manualQtd" type="number" min="1" value="1">
+        <button class="secondary-action" style="margin-top:12px" onclick="registrarManual()">Registrar</button>
+      </div>
+
+      <div id="estoqueView" class="card hidden">
+        <h3>Estoque</h3>
+        <div class="wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th></tr></thead>
+            <tbody id="listaEstoqueCompleto"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="etiquetas" class="card hidden">
+        <h3>Etiquetas de estoque</h3>
+        <div class="form-row" style="margin-bottom:12px">
+          <div><label>Quantidade de etiquetas</label><input class="app-input" id="labelQty" type="number" min="1" value="1"></div>
+          <div><label>Quantidade atual do produto na etiqueta</label><input class="app-input" id="labelUnitsStock" type="number" min="1" value="1" oninput="this.dataset.userEdited='1'"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div><label>Tamanho</label><input class="app-input" value="100 x 150 mm" disabled></div><div></div>
+        </div>
+        <div class="wrap">
+          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody></table>
+        </div>
+        <div id="printArea" class="hidden" style="margin-top:16px">
+          <div id="labelSheet" class="label-sheet"></div>
+          <div id="printActions" style="margin-top:12px"><button class="action" onclick="window.print()">Imprimir</button> <button class="secondary-action" onclick="fecharEtiqueta()">Fechar</button></div>
+        </div>
+      </div>
+
+      <div id="scannerMobile" class="card hidden">
+        <h3>Scanner no celular</h3>
+        <div style="color:#6b7280;margin-bottom:12px">Android: prefira Chrome. iPhone: prefira Safari. Em qualquer navegador, a entrada manual continua disponível.</div>
+        <div class="form-row">
+          <div>
+            <div style="margin-bottom:12px"><button class="action" onclick="iniciarScanner()">Abrir câmera</button> <button class="secondary-action" onclick="pararScanner()">Parar</button></div>
+            <div id="reader"></div>
+            <div id="cameraHelp" class="warnbox hidden">Se a câmera não abrir ou não ler, use a entrada manual.</div>
+          </div>
+          <div>
+            <div class="card" style="box-shadow:none;border:1px solid #e5e7eb"><div><b>Última leitura:</b> <span id="scanResultText">Nenhuma</span></div><div style="margin-top:8px"><b>Produto encontrado:</b> <span id="scanFoundProduct">Nenhum</span></div></div>
+            <div style="margin-top:12px"><label>Entrada manual do código</label><input class="app-input" id="manualScanCode" placeholder="Digite ou cole o código"><button class="secondary-action" style="margin-top:10px" onclick="usarCodigoManual()">Usar este código</button></div>
+            <div class="quick-qty"><button onclick="setScannerQty(1)">+1</button><button onclick="setScannerQty(5)">+5</button><button onclick="setScannerQty(10)">+10</button><button onclick="setScannerQty(20)">+20</button></div>
+            <div class="form-row" style="margin-top:12px"><div><label>Quantidade</label><input class="app-input" id="scannerQty" type="number" min="1" value="1"></div><div style="align-self:end"><button class="success-action" style="width:100%" onclick="darBaixaScanner()">Dar baixa</button></div></div>
+            <div id="bigOk" class="big-ok">BAIXA REALIZADA</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Produtos</h3>
+        <div class="wrap"><table><thead><tr><th>Nome</th><th>Código de barras</th><th>Quantidade</th><th>Preço</th><th>Ações</th></tr></thead><tbody id="lista"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
+let db = { users: [], products: [], lastInternalCode: 0, sessionUser: null };
+let html5Scanner = null;
+let scannerRunning = false;
+let ultimoCodigoLido = "";
+let ultimoProdutoIndex = -1;
+let audioCtx = null;
+
+function byId(id) { return document.getElementById(id); }
+function saveSession() { localStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
+function loadSession() { db.sessionUser = localStorage.getItem("inno_stock_online_session_user") || null; }
+function currentUser() { return db.users.find(u => u.username === db.sessionUser) || null; }
+function isAdmin() { const u = currentUser(); return !!u && u.role === "admin"; }
+function nextInternalCode() { db.lastInternalCode += 1; return "INT-" + String(db.lastInternalCode).padStart(6, "0"); }
+function createStockLabelCode(p) { return "ESTOQUE-" + p.internal_code; }
+function showNotice(msg) { const el = byId("notice"); if (el) { el.textContent = msg; el.classList.remove("hidden"); } }
+function clearNotice() { const el = byId("notice"); if (el) el.classList.add("hidden"); }
+function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code128&scale=3&height=10&includetext=false&text=" + encodeURIComponent(text); }
+function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
+
+function hideAllSections() {
+  ["account","users","produto","manual","estoqueView","etiquetas","scannerMobile"].forEach(id => {
+    const el = byId(id);
+    if (el) el.classList.add("hidden");
+  });
+}
+function showSection(id) {
+  hideAllSections();
+  const target = byId(id);
+  if (target) target.classList.remove("hidden");
+  if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
+}
+
+async function bootstrap() {
+  loadSession();
+  const ok = await testConnection();
+  if (!ok) return;
+  await ensureSeedAdmin();
+  await loadAll();
+  if (db.sessionUser && currentUser()) {
+    byId("loginPage").classList.add("hidden");
+    byId("app").classList.remove("hidden");
+    applyUserPermissions();
+    render();
+    showSection("produto");
+  }
+}
+async function testConnection() {
+  try {
+    const res = await sb.from('app_users').select('id').limit(1);
+    if (res.error) {
+      showNotice("Rode o arquivo SQL_SETUP.sql no SQL Editor do Supabase antes de usar.");
+      return false;
+    }
+    return true;
+  } catch (e) {
+    showNotice("Não foi possível conectar ao Supabase.");
+    return false;
+  }
+}
+async function ensureSeedAdmin() {
+  const res = await sb.from('app_users').select('*').eq('username', 'admin').limit(1);
+  if (!res.data || !res.data.length) {
+    await sb.from('app_users').insert({ name:'Administrador', username:'admin', password:'123456', role:'admin' });
+  }
+}
+async function loadAll() {
+  const usersRes = await sb.from('app_users').select('*').order('id');
+  const prodRes = await sb.from('products').select('*').order('id');
+  db.users = usersRes.data || [];
+  db.products = prodRes.data || [];
+  db.lastInternalCode = db.products.reduce((m, p) => {
+    const n = Number(String(p.internal_code || '').replace('INT-',''));
+    return Number.isFinite(n) ? Math.max(m, n) : m;
+  }, 0);
+}
+async function login() {
+  clearNotice();
+  const user = byId("username").value.trim();
+  const pass = byId("password").value.trim();
+  const res = await sb.from('app_users').select('*').eq('username', user).eq('password', pass).limit(1);
+  if (res.error || !res.data || !res.data.length) {
+    const el = byId("loginError");
+    el.textContent = "Usuário ou senha inválidos.";
+    el.style.display = "block";
+    return;
+  }
+  db.sessionUser = res.data[0].username;
+  saveSession();
+  await loadAll();
+  byId("loginPage").classList.add("hidden");
+  byId("app").classList.remove("hidden");
+  applyUserPermissions();
+  render();
+  showSection("produto");
+}
+function logout() { db.sessionUser = null; saveSession(); location.reload(); }
+function applyUserPermissions() {
+  const u = currentUser();
+  byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
+  const admin = isAdmin();
+  byId("accountBlocked").classList.toggle("hidden", admin);
+  byId("accountAdminArea").classList.toggle("hidden", !admin);
+  byId("usersBlocked").classList.toggle("hidden", admin);
+  byId("usersAdminArea").classList.toggle("hidden", !admin);
+  if (admin && u) {
+    byId("accNome").value = u.name || "";
+    byId("accUser").value = u.username || "";
+  }
+}
+async function salvarConta() {
+  if (!isAdmin()) return alert("Somente o admin pode alterar usuário e senha.");
+  const u = currentUser();
+  const name = byId("accNome").value.trim();
+  const username = byId("accUser").value.trim();
+  const atual = byId("accSenhaAtual").value;
+  const nova = byId("accSenhaNova").value;
+  const payload = { name, username };
+  if (atual && nova && atual === u.password) payload.password = nova;
+  await sb.from('app_users').update(payload).eq('id', u.id);
+  db.sessionUser = username;
+  saveSession();
+  await loadAll();
+  applyUserPermissions();
+  render();
+  alert("Conta salva");
+}
+async function criarUsuario() {
+  if (!isAdmin()) return alert("Somente o admin pode criar usuários.");
+  const name = byId("uNome").value.trim();
+  const username = byId("uUsuario").value.trim();
+  const password = byId("uSenha").value.trim();
+  const role = byId("uRole").value || "operador";
+  if (!name || !username || !password) return;
+  await sb.from('app_users').insert({ name, username, password, role });
+  byId("uNome").value = "";
+  byId("uUsuario").value = "";
+  byId("uSenha").value = "";
+  byId("uRole").value = "operador";
+  await loadAll();
+  render();
+}
+async function editarUsuario(i) {
+  if (!isAdmin()) return;
+  const u = db.users[i];
+  const name = prompt("Editar nome:", u.name);
+  const username = prompt("Editar usuário:", u.username);
+  const role = prompt("Editar nível (admin ou operador):", u.role);
+  if (name === null && username === null && role === null) return;
+  await sb.from('app_users').update({
+    name: name ?? u.name,
+    username: username ?? u.username,
+    role: (role === "admin" || role === "operador") ? role : u.role
+  }).eq('id', u.id);
+  await loadAll();
+  render();
+}
+async function removerUsuario(i) {
+  if (!isAdmin()) return;
+  const u = db.users[i];
+  if (u.role === "admin") return alert("O admin não pode ser excluído.");
+  await sb.from('app_users').delete().eq('id', u.id);
+  await loadAll();
+  render();
+}
+function renderUsuarios() {
+  byId("listaUsuarios").innerHTML = db.users.map((u, i) => `<tr><td>${u.name}</td><td>${u.username}</td><td>${u.role}</td><td>${isAdmin() ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> ${u.role !== "admin" ? `<button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}` : ""}</td></tr>`).join("");
+}
+async function add() {
+  const item = {
+    name: byId("nome").value.trim(),
+    barcode: byId("codigoBarras").value.trim(),
+    category: byId("categoria").value.trim(),
+    price: Number(byId("preco").value || 0),
+    stock: Number(byId("qtd").value || 0),
+    internal_code: nextInternalCode()
+  };
+  if (!item.name) return;
+  item.stock_label = createStockLabelCode(item);
+  await sb.from('products').insert(item);
+  ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
+  await loadAll();
+  render();
+}
+function preencherSelectProduto() {
+  const sel = byId("manualProduto");
+  sel.innerHTML = '<option value="">Selecione</option>' + db.products.map((p, i) => `<option value="${i}">${p.name}${p.barcode ? ' - ' + p.barcode : ''}</option>`).join("");
+}
+async function registrarManual() {
+  const idx = byId("manualProduto").value;
+  const tipo = byId("manualTipo").value;
+  const qtdm = Number(byId("manualQtd").value || 0);
+  if (idx === "" || qtdm <= 0) return;
+  const p = db.products[idx];
+  const newStock = tipo === "saida" ? Math.max(0, Number(p.stock) - qtdm) : Number(p.stock) + qtdm;
+  await sb.from('products').update({ stock:newStock }).eq('id', p.id);
+  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '' });
+  await loadAll();
+  render();
+}
+function renderEtiquetas() {
+  byId("listaEtiquetas").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
+}
+function gerarEtiqueta(i) {
+  const p = db.products[i];
+  const qty = Math.max(1, Number(byId("labelQty")?.value || 1));
+  if (byId("labelUnitsStock") && !byId("labelUnitsStock").dataset.userEdited) byId("labelUnitsStock").value = p.stock || 1;
+  const unitsStock = Math.max(1, Number(byId("labelUnitsStock")?.value || p.stock || 1));
+  let cards = "";
+  for (let n = 0; n < qty; n++) {
+    cards += `
+      <div class="label-card">
+        <div class="label-main-name">${p.name}</div>
+        <div class="label-qty">Quantidade atual: ${unitsStock}</div>
+        <div class="label-simple-grid">
+          <div>
+            <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
+            <img src="${qrUrl(p.stock_label)}" style="max-width:100%;display:block;margin:0 auto 6px auto">
+          </div>
+          <div>
+            <div style="text-align:center;font-weight:700;margin-bottom:6px">Código de barras</div>
+            <img src="${barcodeUrl(p.stock_label)}" style="max-width:100%;display:block;margin:0 auto 6px auto">
+            <div style="font-family:monospace;word-break:break-all;text-align:center">${p.stock_label}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+  byId("labelSheet").innerHTML = cards;
+  byId("printArea").classList.remove("hidden");
+}
+function fecharEtiqueta() { byId("printArea").classList.add("hidden"); }
+function findProductByScannedCode(code) { return db.products.findIndex(p => p.stock_label === code || p.barcode === code); }
+function processCode(code) {
+  if (!code || code === ultimoCodigoLido) return;
+  ultimoCodigoLido = code;
+  byId("scanResultText").innerText = code;
+  ultimoProdutoIndex = findProductByScannedCode(code);
+  byId("scanFoundProduct").innerText = ultimoProdutoIndex >= 0 ? db.products[ultimoProdutoIndex].name : "Não encontrado";
+  if (ultimoProdutoIndex >= 0) playBeep();
+}
+function usarCodigoManual() {
+  const code = byId("manualScanCode").value.trim();
+  if (!code) return;
+  processCode(code);
+}
+async function iniciarScanner() {
+  const help = byId("cameraHelp");
+  if (help) {
+    help.classList.add("hidden");
+    help.textContent = "Se a câmera não abrir ou não ler, use a entrada manual.";
+  }
+  try {
+    if (!window.Html5Qrcode) {
+      if (help) {
+        help.classList.remove("hidden");
+        help.textContent = "Biblioteca do scanner não carregou. Recarregue a página.";
+      }
+      return;
+    }
+    const reader = byId("reader");
+    if (reader) reader.innerHTML = "";
+    if (html5Scanner) {
+      try { await html5Scanner.stop(); } catch (e) {}
+      try { await html5Scanner.clear(); } catch (e) {}
+      html5Scanner = null;
+    }
+    html5Scanner = new Html5Qrcode("reader");
+    let cameraConfig = { facingMode: "environment" };
+    try {
+      const cams = await Html5Qrcode.getCameras();
+      if (cams && cams.length) {
+        const back = cams.find(c => /back|traseira|rear|environment/i.test((c.label || "")));
+        cameraConfig = back ? { deviceId: { exact: back.id } } : { deviceId: { exact: cams[0].id } };
+      }
+    } catch (e) {}
+    await html5Scanner.start(cameraConfig, { fps: 10, qrbox: { width: 260, height: 180 } }, (decodedText) => processCode(decodedText), () => {});
+    scannerRunning = true;
+  } catch (e) {
+    if (help) {
+      help.classList.remove("hidden");
+      help.textContent = "Não foi possível abrir a câmera neste navegador. Use a entrada manual do código.";
+    }
+  }
+}
+async function pararScanner() {
+  try {
+    if (html5Scanner && scannerRunning) {
+      await html5Scanner.stop();
+      await html5Scanner.clear();
+      scannerRunning = false;
+    }
+    const reader = byId("reader");
+    if (reader) reader.innerHTML = "";
+  } catch (e) {}
+}
+function setScannerQty(v) { byId("scannerQty").value = v; }
+function playBeep() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = "sine"; osc.frequency.value = 880; gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+  } catch (e) {}
+}
+function showBigOk(msg) {
+  const el = byId("bigOk");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 1800);
+}
+async function darBaixaScanner() {
+  if (ultimoProdutoIndex < 0) return alert("Nenhum produto reconhecido.");
+  const qtd = Number(byId("scannerQty").value || 0);
+  if (qtd <= 0) return alert("Informe uma quantidade válida.");
+  const p = db.products[ultimoProdutoIndex];
+  if (Number(p.stock) < qtd) return alert("Estoque insuficiente.");
+  const newStock = Number(p.stock) - qtd;
+  await sb.from('products').update({ stock:newStock }).eq('id', p.id);
+  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '' });
+  await loadAll();
+  render();
+  playBeep();
+  showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
+}
+async function excluirProduto(i) {
+  if (!confirm("Deseja excluir este produto?")) return;
+  await sb.from('products').delete().eq('id', db.products[i].id);
+  await loadAll();
+  render();
+}
+async function editarProduto(i) {
+  const p = db.products[i];
+  const novoNome = prompt("Editar nome:", p.name);
+  const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
+  const novaQtd = prompt("Editar quantidade:", p.stock);
+  const novoPreco = prompt("Editar preço:", p.price);
+  await sb.from('products').update({
+    name: novoNome ?? p.name,
+    barcode: novoCodigoBarras ?? p.barcode,
+    stock: Number(novaQtd ?? p.stock),
+    price: Number(novoPreco ?? p.price)
+  }).eq('id', p.id);
+  await loadAll();
+  render();
+}
+function render() {
+  byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
+  byId("s1").innerText = db.products.length;
+  byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
+  byId("s3").innerText = db.products.filter(p => Number(p.stock || 0) <= 0).length;
+  preencherSelectProduto();
+  renderUsuarios();
+  renderEtiquetas();
+  renderEstoqueCompleto();
+}
+
+function exportarPlanilha() {
+  if (!db.products || !db.products.length) {
+    alert("Não há produtos para exportar.");
+    return;
+  }
+  const headers = ["Nome","Código de barras","Categoria","Quantidade","Preço","Código interno","Etiqueta"];
+  const rows = db.products.map(p => [
+    p.name || "",
+    p.barcode || "",
+    p.category || "",
+    p.stock ?? "",
+    p.price ?? "",
+    p.internal_code || "",
+    p.stock_label || ""
+  ]);
+  const csv = [headers].concat(rows)
+    .map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(";"))
+    .join("\n");
+  const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "estoque_inno_stock.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function renderEstoqueCompleto() {
+  const tbody = byId("listaEstoqueCompleto");
+  if (!tbody) return;
+  tbody.innerHTML = db.products.map(p => `
+    <tr>
+      <td>${p.name || ""}</td>
+      <td>${p.barcode || ""}</td>
+      <td>${p.category || ""}</td>
+      <td>${p.stock ?? ""}</td>
+      <td>${Number(p.price || 0).toFixed(2)}</td>
+      <td>${p.internal_code || ""}</td>
+    </tr>
+  `).join("");
+}
+
+bootstrap();
+</script>
+</body>
+</html>
