@@ -95,6 +95,7 @@ th{background:#f8fafc}
       <button onclick="exportarPlanilha()">Exportar Excel</button>
       <button id="historyBtn" class="hidden" onclick="showSection('historicoView')">Histórico</button>
       <button onclick="showSection('etiquetas')">Etiquetas de estoque</button>
+      <button onclick="showSection('filaEtiquetas')">Fila de etiquetas</button>
       <button onclick="showSection('scannerMobile')">Scanner no celular</button>
       <button class="logout" onclick="logout()">Sair</button>
     </div>
@@ -102,7 +103,7 @@ th{background:#f8fafc}
     <div class="main">
       <div class="top-card">
         <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+        <div style="color:#6b7280"></div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -235,7 +236,34 @@ th{background:#f8fafc}
         </div>
       </div>
 
-      <div id="scannerMobile" class="card hidden">
+      
+      <div id="filaEtiquetas" class="card hidden">
+        <h3>Fila de etiquetas pendentes</h3>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="action" onclick="imprimirFilaEtiquetas()">Imprimir todas</button>
+          <button class="secondary-action" onclick="atualizarFilaEtiquetas()">Atualizar fila</button>
+          <button class="danger" onclick="limparFilaEtiquetas()">Limpar fila</button>
+        </div>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Produto</th>
+                <th>Quantidade restante</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="listaFilaEtiquetas"></tbody>
+          </table>
+        </div>
+        <div id="filaPrintArea" class="hidden" style="margin-top:16px">
+          <div id="filaLabelSheet" class="label-sheet"></div>
+        </div>
+      </div>
+
+<div id="scannerMobile" class="card hidden">
         <h3>Scanner no celular</h3>
         <div style="color:#6b7280;margin-bottom:12px">Android: prefira Chrome. iPhone: prefira Safari. Em qualquer navegador, a entrada manual continua disponível.</div>
         <div class="form-row">
@@ -263,7 +291,7 @@ th{background:#f8fafc}
 
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
-let db = { users: [], products: [], movements: [], filteredMovements: [], lastInternalCode: 0, sessionUser: null };
+let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
 let html5Scanner = null;
 let scannerRunning = false;
 let ultimoCodigoLido = "";
@@ -283,7 +311,7 @@ function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code1
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 
 function hideAllSections() {
-  ["account","users","produto","manual","estoqueView","historicoView","etiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","manual","estoqueView","historicoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -293,6 +321,126 @@ function showSection(id) {
   const target = byId(id);
   if (target) target.classList.remove("hidden");
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
+}
+
+
+function formatDateTime(v) {
+  try {
+    return v ? new Date(v).toLocaleString('pt-BR') : "";
+  } catch (e) {
+    return "";
+  }
+}
+
+async function loadPendingLabels() {
+  try {
+    const res = await sb.from('pending_labels').select('*').order('id', { ascending: false });
+    db.pendingLabels = res.data || [];
+  } catch (e) {
+    db.pendingLabels = [];
+  }
+}
+
+function renderFilaEtiquetas() {
+  const tbody = byId("listaFilaEtiquetas");
+  if (!tbody) return;
+  const rows = (db.pendingLabels || []).map((item, i) => `
+    <tr>
+      <td>${formatDateTime(item.created_at)}</td>
+      <td>${item.product_name || ""}</td>
+      <td>${item.quantity_remaining ?? ""}</td>
+      <td>${item.status || ""}</td>
+      <td>
+        <button class="secondary-action" onclick="imprimirEtiquetaPendente(${i})">Imprimir</button>
+        <button class="danger" onclick="removerEtiquetaPendente(${i})">Excluir</button>
+      </td>
+    </tr>
+  `).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="5">Nenhuma etiqueta pendente.</td></tr>`;
+}
+
+function montarCardEtiqueta(nome, quantidade, stockLabel) {
+  return `
+    <div class="label-card">
+      <div class="label-main-name">${nome || ""}</div>
+      <div class="label-qty">Quantidade atual: ${quantidade || 0}</div>
+      <div class="label-simple-grid">
+        <div>
+          <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
+          <img src="${qrUrl(stockLabel || "")}" style="max-width:100%;display:block;margin:0 auto 6px auto">
+        </div>
+        <div>
+          <div style="text-align:center;font-weight:700;margin-bottom:6px">Código de barras</div>
+          <img src="${barcodeUrl(stockLabel || "")}" style="max-width:100%;display:block;margin:0 auto 6px auto">
+          <div style="font-family:monospace;word-break:break-all;text-align:center">${stockLabel || ""}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function adicionarEtiquetaPendente(productId, productName, quantityRemaining, stockLabel) {
+  try {
+    await sb.from('pending_labels').insert({
+      product_id: productId,
+      product_name: productName || "",
+      quantity_remaining: Number(quantityRemaining || 0),
+      status: 'pendente',
+      stock_label: stockLabel || ""
+    });
+    await loadPendingLabels();
+    renderFilaEtiquetas();
+  } catch (e) {}
+}
+
+async function atualizarFilaEtiquetas() {
+  await loadPendingLabels();
+  renderFilaEtiquetas();
+}
+
+async function removerEtiquetaPendente(i) {
+  const item = db.pendingLabels[i];
+  if (!item) return;
+  if (!confirm("Deseja excluir esta etiqueta pendente?")) return;
+  await sb.from('pending_labels').delete().eq('id', item.id);
+  await loadPendingLabels();
+  renderFilaEtiquetas();
+}
+
+async function limparFilaEtiquetas() {
+  if (!confirm("Deseja limpar toda a fila de etiquetas pendentes?")) return;
+  await sb.from('pending_labels').delete().gt('id', 0);
+  await loadPendingLabels();
+  renderFilaEtiquetas();
+}
+
+async function imprimirEtiquetaPendente(i) {
+  const item = db.pendingLabels[i];
+  if (!item) return;
+  byId("filaLabelSheet").innerHTML = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label);
+  byId("filaPrintArea").classList.remove("hidden");
+  window.print();
+  byId("filaPrintArea").classList.add("hidden");
+  await sb.from('pending_labels').update({ status: 'impresso' }).eq('id', item.id);
+  await loadPendingLabels();
+  renderFilaEtiquetas();
+}
+
+async function imprimirFilaEtiquetas() {
+  const items = (db.pendingLabels || []).filter(x => x.status !== 'impresso');
+  if (!items.length) {
+    alert("Não há etiquetas pendentes para imprimir.");
+    return;
+  }
+  byId("filaLabelSheet").innerHTML = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label)).join("");
+  byId("filaPrintArea").classList.remove("hidden");
+  window.print();
+  byId("filaPrintArea").classList.add("hidden");
+  const ids = items.map(x => x.id);
+  if (ids.length) {
+    await sb.from('pending_labels').update({ status: 'impresso' }).in('id', ids);
+  }
+  await loadPendingLabels();
+  renderFilaEtiquetas();
 }
 
 async function bootstrap() {
@@ -334,6 +482,7 @@ async function loadAll() {
   db.users = usersRes.data || [];
   db.products = prodRes.data || [];
   await loadHistorico();
+  await loadPendingLabels();
   db.lastInternalCode = db.products.reduce((m, p) => {
     const n = Number(String(p.internal_code || '').replace('INT-',''));
     return Number.isFinite(n) ? Math.max(m, n) : m;
@@ -473,6 +622,17 @@ async function registrarManual() {
   await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '', details:'Movimentação manual' });
   await loadAll();
   render();
+
+  const etiquetaAtual = Number(byId("labelUnitsStock")?.value || 0);
+  if (tipo === 'saida' && etiquetaAtual > 0 && qtdm < etiquetaAtual) {
+    const restante = etiquetaAtual - qtdm;
+    await adicionarEtiquetaPendente(p.id, p.name, restante, p.stock_label);
+    if (byId("labelUnitsStock")) {
+      byId("labelUnitsStock").value = restante;
+      delete byId("labelUnitsStock").dataset.userEdited;
+    }
+    alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+  }
 }
 function renderEtiquetas() {
   byId("listaEtiquetas").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
@@ -598,6 +758,17 @@ async function darBaixaScanner() {
   render();
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
+
+  const etiquetaAtual = Number(byId("labelUnitsStock")?.value || 0);
+  if (etiquetaAtual > 0 && qtd < etiquetaAtual) {
+    const restante = etiquetaAtual - qtd;
+    await adicionarEtiquetaPendente(p.id, p.name, restante, p.stock_label);
+    if (byId("labelUnitsStock")) {
+      byId("labelUnitsStock").value = restante;
+      delete byId("labelUnitsStock").dataset.userEdited;
+    }
+    alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+  }
 }
 async function excluirProduto(i) {
   if (!confirm("Deseja excluir este produto?")) return;
@@ -632,6 +803,7 @@ function render() {
   renderEtiquetas();
   renderEstoqueCompleto();
   renderHistorico();
+  renderFilaEtiquetas();
 }
 
 async function exportarPlanilha() {
@@ -828,6 +1000,7 @@ function aplicarFiltroHistorico() {
   }
   db.filteredMovements = items;
   renderHistorico();
+  renderFilaEtiquetas();
 }
 
 function limparFiltroHistorico() {
@@ -835,6 +1008,7 @@ function limparFiltroHistorico() {
   if (byId("histDateEnd")) byId("histDateEnd").value = "";
   db.filteredMovements = [...(db.movements || [])];
   renderHistorico();
+  renderFilaEtiquetas();
 }
 
 async function limparHistorico() {
@@ -844,6 +1018,7 @@ async function limparHistorico() {
   await sb.from('movements').delete().gt('id', 0);
   await loadHistorico();
   renderHistorico();
+  renderFilaEtiquetas();
 }
 
 async function limparHistoricoHoje() {
@@ -855,6 +1030,7 @@ async function limparHistoricoHoje() {
   await sb.from('movements').delete().gte('created_at', inicio);
   await loadHistorico();
   renderHistorico();
+  renderFilaEtiquetas();
 }
 
 async function exportarHistoricoExcel() {

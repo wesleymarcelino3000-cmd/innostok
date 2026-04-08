@@ -38,3 +38,16 @@ alter table public.movements disable row level security;
 insert into public.app_users (name, username, password, role)
 values ('Administrador', 'admin', '123456', 'admin')
 on conflict (username) do nothing;
+
+
+create table if not exists public.pending_labels (
+  id bigint generated always as identity primary key,
+  product_id bigint,
+  product_name text,
+  quantity_remaining integer default 0,
+  status text default 'pendente',
+  stock_label text,
+  created_at timestamptz default now()
+);
+
+alter table public.pending_labels disable row level security;

@@ -20,3 +20,9 @@ Atualização:
 Atualização:
 - botão Histórico visível somente para admin
 - histórico de movimentações, criação, edição e exclusão
+
+
+Atualização:
+- fila de etiquetas pendentes
+- quando baixar uma etiqueta parcial, o restante fica em espera para imprimir depois
+- botão para imprimir todas as pendentes de uma vez
