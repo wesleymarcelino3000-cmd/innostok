@@ -10,3 +10,8 @@ PASSOS:
 3. Login:
    usuário: admin
    senha: 123456
+
+
+Atualização:
+- botão Exportar Excel
+- planilha .xlsx formatada automaticamente
