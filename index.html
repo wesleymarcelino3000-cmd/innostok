@@ -592,23 +592,64 @@ function exportarPlanilha() {
     alert("Não há produtos para exportar.");
     return;
   }
-  const headers = ["Nome","Código de barras","Categoria","Quantidade","Preço","Código interno","Etiqueta"];
-  const rows = db.products.map(p => [
-    p.name || "",
-    p.barcode || "",
-    p.category || "",
-    p.stock ?? "",
-    p.price ?? "",
-    p.internal_code || "",
-    p.stock_label || ""
-  ]);
-  const csv = [headers].concat(rows)
+
+  const produtosOrdenados = [...db.products].sort((a, b) => {
+    const catA = String(a.category || "").toLowerCase();
+    const catB = String(b.category || "").toLowerCase();
+    if (catA !== catB) return catA.localeCompare(catB, 'pt-BR');
+    return String(a.name || "").localeCompare(String(b.name || ""), 'pt-BR');
+  });
+
+  const headers = [
+    "Produto",
+    "Categoria",
+    "Quantidade em estoque",
+    "Preço unitário",
+    "Valor total em estoque",
+    "Código de barras",
+    "Código interno",
+    "Etiqueta"
+  ];
+
+  const rows = produtosOrdenados.map(p => {
+    const qtd = Number(p.stock || 0);
+    const preco = Number(p.price || 0);
+    const total = qtd * preco;
+    return [
+      p.name || "",
+      p.category || "",
+      qtd,
+      preco.toFixed(2),
+      total.toFixed(2),
+      p.barcode || "",
+      p.internal_code || "",
+      p.stock_label || ""
+    ];
+  });
+
+  const totalProdutos = produtosOrdenados.length;
+  const totalUnidades = produtosOrdenados.reduce((s, p) => s + Number(p.stock || 0), 0);
+  const valorTotal = produtosOrdenados.reduce((s, p) => s + (Number(p.stock || 0) * Number(p.price || 0)), 0);
+
+  const tabela = [
+    ["Resumo do estoque"],
+    [""],
+    ["Total de produtos", totalProdutos],
+    ["Total de unidades", totalUnidades],
+    ["Valor total estimado", valorTotal.toFixed(2)],
+    [""],
+    headers,
+    ...rows
+  ];
+
+  const csv = tabela
     .map(row => row.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(";"))
     .join("\n");
+
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "estoque_inno_stock.csv";
+  a.download = "estoque_inno_stock_organizado.csv";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
