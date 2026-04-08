@@ -85,7 +85,7 @@ th{background:#f8fafc}
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
       <h2>Inno Stok</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <div class="sub"></div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account')">Minha conta</button>
       <button onclick="showSection('users')">Usuários</button>
@@ -188,6 +188,17 @@ th{background:#f8fafc}
 
       <div id="historicoView" class="card hidden">
         <h3>Histórico do sistema</h3>
+        <div class="form-row" style="margin-bottom:12px">
+          <div><label>Data inicial</label><input class="app-input" id="histDateStart" type="date"></div>
+          <div><label>Data final</label><input class="app-input" id="histDateEnd" type="date"></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="secondary-action" onclick="aplicarFiltroHistorico()">Filtrar</button>
+          <button class="secondary-action" onclick="limparFiltroHistorico()">Limpar filtro</button>
+          <button class="action" onclick="exportarHistoricoExcel()">Exportar histórico</button>
+          <button class="warn-action" onclick="limparHistoricoHoje()">Limpar só hoje</button>
+          <button class="danger" onclick="limparHistorico()">Limpar histórico</button>
+        </div>
         <div class="wrap">
           <table>
             <thead>
@@ -243,8 +254,7 @@ th{background:#f8fafc}
         </div>
       </div>
 
-      <div class="card">
-        <h3>Produtos</h3>
+      <div class="card" style="margin-top:0">
         <div class="wrap"><table><thead><tr><th>Nome</th><th>Código de barras</th><th>Quantidade</th><th>Preço</th><th>Ações</th></tr></thead><tbody id="lista"></tbody></table></div>
       </div>
     </div>
@@ -253,7 +263,7 @@ th{background:#f8fafc}
 
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
-let db = { users: [], products: [], movements: [], lastInternalCode: 0, sessionUser: null };
+let db = { users: [], products: [], movements: [], filteredMovements: [], lastInternalCode: 0, sessionUser: null };
 let html5Scanner = null;
 let scannerRunning = false;
 let ultimoCodigoLido = "";
@@ -795,6 +805,111 @@ function renderEstoqueCompleto() {
 }
 
 
+
+function verificarSenhaAdminAtual() {
+  const u = currentUser();
+  if (!u) return false;
+  const senha = prompt("Digite sua senha para confirmar:");
+  if (senha === null) return false;
+  return senha === u.password;
+}
+
+function aplicarFiltroHistorico() {
+  const start = byId("histDateStart") ? byId("histDateStart").value : "";
+  const end = byId("histDateEnd") ? byId("histDateEnd").value : "";
+  let items = [...(db.movements || [])];
+  if (start) {
+    const startDate = new Date(start + "T00:00:00");
+    items = items.filter(m => m.created_at && new Date(m.created_at) >= startDate);
+  }
+  if (end) {
+    const endDate = new Date(end + "T23:59:59");
+    items = items.filter(m => m.created_at && new Date(m.created_at) <= endDate);
+  }
+  db.filteredMovements = items;
+  renderHistorico();
+}
+
+function limparFiltroHistorico() {
+  if (byId("histDateStart")) byId("histDateStart").value = "";
+  if (byId("histDateEnd")) byId("histDateEnd").value = "";
+  db.filteredMovements = [...(db.movements || [])];
+  renderHistorico();
+}
+
+async function limparHistorico() {
+  if (!isAdmin()) return alert("Somente admin pode limpar o histórico.");
+  if (!verificarSenhaAdminAtual()) return alert("Senha incorreta.");
+  if (!confirm("Deseja apagar TODO o histórico?")) return;
+  await sb.from('movements').delete().gt('id', 0);
+  await loadHistorico();
+  renderHistorico();
+}
+
+async function limparHistoricoHoje() {
+  if (!isAdmin()) return alert("Somente admin pode limpar o histórico.");
+  if (!verificarSenhaAdminAtual()) return alert("Senha incorreta.");
+  if (!confirm("Deseja apagar apenas o histórico de hoje?")) return;
+  const agora = new Date();
+  const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).toISOString();
+  await sb.from('movements').delete().gte('created_at', inicio);
+  await loadHistorico();
+  renderHistorico();
+}
+
+async function exportarHistoricoExcel() {
+  if (!window.ExcelJS) return alert("Biblioteca do Excel não carregou.");
+  const items = (db.filteredMovements && db.filteredMovements.length ? db.filteredMovements : (db.movements || []));
+  if (!items.length) return alert("Não há histórico para exportar.");
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Histórico");
+  ws.mergeCells("A1:G1");
+  ws.getCell("A1").value = "RELATÓRIO DE HISTÓRICO";
+  ws.getCell("A1").font = { bold: true, size: 16, color: { argb: "FFFFFFFF" } };
+  ws.getCell("A1").alignment = { horizontal: "center" };
+  ws.getCell("A1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "031126" } };
+
+  ws.getCell("A3").value = "Total de registros";
+  ws.getCell("B3").value = items.length;
+  ws.getCell("A3").font = { bold: true };
+
+  const headers = ["Data", "Usuário", "Ação", "Origem", "Produto", "Quantidade", "Detalhes"];
+  headers.forEach((h, i) => {
+    const c = ws.getCell(5, i + 1);
+    c.value = h;
+    c.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    c.alignment = { horizontal: "center" };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "2563EB" } };
+  });
+
+  items.forEach((m, idx) => {
+    const r = 6 + idx;
+    ws.getCell(r, 1).value = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : "";
+    ws.getCell(r, 2).value = m.username || "";
+    ws.getCell(r, 3).value = m.type || "";
+    ws.getCell(r, 4).value = m.source || "";
+    ws.getCell(r, 5).value = m.product_name || "";
+    ws.getCell(r, 6).value = m.quantity ?? "";
+    ws.getCell(r, 7).value = m.details || "";
+  });
+
+  ws.columns = [
+    { width: 22 }, { width: 18 }, { width: 18 }, { width: 16 },
+    { width: 24 }, { width: 14 }, { width: 30 }
+  ];
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "historico_inno_stock.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
 async function registrarHistorico(action, source, productName, quantity, details) {
   try {
     await sb.from('movements').insert({
@@ -813,6 +928,7 @@ async function loadHistorico() {
   try {
     const res = await sb.from('movements').select('*').order('id', { ascending: false });
     db.movements = res.data || [];
+    db.filteredMovements = [...db.movements];
   } catch (e) {
     db.movements = [];
   }
@@ -821,7 +937,8 @@ async function loadHistorico() {
 function renderHistorico() {
   const tbody = byId("listaHistorico");
   if (!tbody) return;
-  const rows = (db.movements || []).map(m => {
+  const items = Array.isArray(db.filteredMovements) ? db.filteredMovements : (db.movements || []);
+  const rows = items.map(m => {
     const data = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : "";
     return `
       <tr>
