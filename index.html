@@ -93,6 +93,7 @@ th{background:#f8fafc}
       <button onclick="showSection('manual')">Baixa manual</button>
       <button onclick="showSection('estoqueView')">Ver estoque</button>
       <button onclick="exportarPlanilha()">Exportar Excel</button>
+      <button id="historyBtn" class="hidden" onclick="showSection('historicoView')">Histórico</button>
       <button onclick="showSection('etiquetas')">Etiquetas de estoque</button>
       <button onclick="showSection('scannerMobile')">Scanner no celular</button>
       <button class="logout" onclick="logout()">Sair</button>
@@ -185,6 +186,26 @@ th{background:#f8fafc}
         </div>
       </div>
 
+      <div id="historicoView" class="card hidden">
+        <h3>Histórico do sistema</h3>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Usuário</th>
+                <th>Ação</th>
+                <th>Origem</th>
+                <th>Produto</th>
+                <th>Quantidade</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="listaHistorico"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="etiquetas" class="card hidden">
         <h3>Etiquetas de estoque</h3>
         <div class="form-row" style="margin-bottom:12px">
@@ -232,7 +253,7 @@ th{background:#f8fafc}
 
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
-let db = { users: [], products: [], lastInternalCode: 0, sessionUser: null };
+let db = { users: [], products: [], movements: [], lastInternalCode: 0, sessionUser: null };
 let html5Scanner = null;
 let scannerRunning = false;
 let ultimoCodigoLido = "";
@@ -252,7 +273,7 @@ function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code1
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 
 function hideAllSections() {
-  ["account","users","produto","manual","estoqueView","etiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","manual","estoqueView","historicoView","etiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -302,6 +323,7 @@ async function loadAll() {
   const prodRes = await sb.from('products').select('*').order('id');
   db.users = usersRes.data || [];
   db.products = prodRes.data || [];
+  await loadHistorico();
   db.lastInternalCode = db.products.reduce((m, p) => {
     const n = Number(String(p.internal_code || '').replace('INT-',''));
     return Number.isFinite(n) ? Math.max(m, n) : m;
@@ -336,6 +358,8 @@ function applyUserPermissions() {
   byId("accountAdminArea").classList.toggle("hidden", !admin);
   byId("usersBlocked").classList.toggle("hidden", admin);
   byId("usersAdminArea").classList.toggle("hidden", !admin);
+  const historyBtn = byId("historyBtn");
+  if (historyBtn) historyBtn.classList.toggle("hidden", !admin);
   if (admin && u) {
     byId("accNome").value = u.name || "";
     byId("accUser").value = u.username || "";
@@ -351,6 +375,7 @@ async function salvarConta() {
   const payload = { name, username };
   if (atual && nova && atual === u.password) payload.password = nova;
   await sb.from('app_users').update(payload).eq('id', u.id);
+  await registrarHistorico('editar_conta', 'conta', '', 0, 'Conta atualizada');
   db.sessionUser = username;
   saveSession();
   await loadAll();
@@ -359,6 +384,10 @@ async function salvarConta() {
   alert("Conta salva");
 }
 async function criarUsuario() {
+  if (db.users.length >= 20) {
+    alert("Limite máximo de 20 usuários atingido.");
+    return;
+  }
   if (!isAdmin()) return alert("Somente o admin pode criar usuários.");
   const name = byId("uNome").value.trim();
   const username = byId("uUsuario").value.trim();
@@ -366,6 +395,7 @@ async function criarUsuario() {
   const role = byId("uRole").value || "operador";
   if (!name || !username || !password) return;
   await sb.from('app_users').insert({ name, username, password, role });
+  await registrarHistorico('criar_usuario', 'usuarios', username, 0, 'Nível: ' + role);
   byId("uNome").value = "";
   byId("uUsuario").value = "";
   byId("uSenha").value = "";
@@ -385,19 +415,21 @@ async function editarUsuario(i) {
     username: username ?? u.username,
     role: (role === "admin" || role === "operador") ? role : u.role
   }).eq('id', u.id);
+  await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador") ? role : u.role));
   await loadAll();
   render();
 }
 async function removerUsuario(i) {
   if (!isAdmin()) return;
   const u = db.users[i];
-  if (u.role === "admin") return alert("O admin não pode ser excluído.");
+  
   await sb.from('app_users').delete().eq('id', u.id);
+  await registrarHistorico('excluir_usuario', 'usuarios', u.username, 0, 'Usuário removido');
   await loadAll();
   render();
 }
 function renderUsuarios() {
-  byId("listaUsuarios").innerHTML = db.users.map((u, i) => `<tr><td>${u.name}</td><td>${u.username}</td><td>${u.role}</td><td>${isAdmin() ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> ${u.role !== "admin" ? `<button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}` : ""}</td></tr>`).join("");
+  byId("listaUsuarios").innerHTML = db.users.map((u, i) => `<tr><td>${u.name}</td><td>${u.username}</td><td>${u.role}</td><td>${isAdmin() ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> ${`<button class="danger" onclick="removerUsuario(${i})">Excluir</button>`}` : ""}</td></tr>`).join("");
 }
 async function add() {
   const item = {
@@ -411,6 +443,7 @@ async function add() {
   if (!item.name) return;
   item.stock_label = createStockLabelCode(item);
   await sb.from('products').insert(item);
+  await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
   ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
   await loadAll();
   render();
@@ -427,7 +460,7 @@ async function registrarManual() {
   const p = db.products[idx];
   const newStock = tipo === "saida" ? Math.max(0, Number(p.stock) - qtdm) : Number(p.stock) + qtdm;
   await sb.from('products').update({ stock:newStock }).eq('id', p.id);
-  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '' });
+  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '', details:'Movimentação manual' });
   await loadAll();
   render();
 }
@@ -550,7 +583,7 @@ async function darBaixaScanner() {
   if (Number(p.stock) < qtd) return alert("Estoque insuficiente.");
   const newStock = Number(p.stock) - qtd;
   await sb.from('products').update({ stock:newStock }).eq('id', p.id);
-  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '' });
+  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '', details:'Baixa via scanner' });
   await loadAll();
   render();
   playBeep();
@@ -558,6 +591,7 @@ async function darBaixaScanner() {
 }
 async function excluirProduto(i) {
   if (!confirm("Deseja excluir este produto?")) return;
+  await registrarHistorico('excluir_produto', 'produtos', db.products[i].name, db.products[i].stock, 'Produto removido');
   await sb.from('products').delete().eq('id', db.products[i].id);
   await loadAll();
   render();
@@ -574,6 +608,7 @@ async function editarProduto(i) {
     stock: Number(novaQtd ?? p.stock),
     price: Number(novoPreco ?? p.price)
   }).eq('id', p.id);
+  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
   await loadAll();
   render();
 }
@@ -586,6 +621,7 @@ function render() {
   renderUsuarios();
   renderEtiquetas();
   renderEstoqueCompleto();
+  renderHistorico();
 }
 
 async function exportarPlanilha() {
@@ -756,6 +792,50 @@ function renderEstoqueCompleto() {
       <td>${p.internal_code || ""}</td>
     </tr>
   `).join("");
+}
+
+
+async function registrarHistorico(action, source, productName, quantity, details) {
+  try {
+    await sb.from('movements').insert({
+      product_id: null,
+      product_name: productName || "",
+      type: action || "",
+      quantity: Number(quantity || 0),
+      source: source || "",
+      username: currentUser()?.username || "",
+      details: details || ""
+    });
+  } catch (e) {}
+}
+
+async function loadHistorico() {
+  try {
+    const res = await sb.from('movements').select('*').order('id', { ascending: false });
+    db.movements = res.data || [];
+  } catch (e) {
+    db.movements = [];
+  }
+}
+
+function renderHistorico() {
+  const tbody = byId("listaHistorico");
+  if (!tbody) return;
+  const rows = (db.movements || []).map(m => {
+    const data = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : "";
+    return `
+      <tr>
+        <td>${data}</td>
+        <td>${m.username || ""}</td>
+        <td>${m.type || ""}</td>
+        <td>${m.source || ""}</td>
+        <td>${m.product_name || ""}</td>
+        <td>${m.quantity ?? ""}</td>
+        <td>${m.details || ""}</td>
+      </tr>
+    `;
+  }).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum histórico encontrado.</td></tr>`;
 }
 
 bootstrap();

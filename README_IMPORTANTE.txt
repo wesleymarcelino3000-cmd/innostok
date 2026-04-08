@@ -15,3 +15,8 @@ PASSOS:
 Atualização:
 - botão Exportar Excel
 - planilha .xlsx formatada automaticamente
+
+
+Atualização:
+- botão Histórico visível somente para admin
+- histórico de movimentações, criação, edição e exclusão

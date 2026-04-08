@@ -27,6 +27,7 @@ create table if not exists public.movements (
   quantity integer,
   source text,
   username text,
+  details text,
   created_at timestamptz default now()
 );
 
