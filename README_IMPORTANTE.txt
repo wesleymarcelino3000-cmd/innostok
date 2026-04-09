@@ -35,3 +35,7 @@ Atualização:
 
 Correção:
 - no celular, o menu agora rola a área principal automaticamente até a função selecionada.
+
+
+Atualização:
+- opção para dar entrada em produto existente sem criar um novo cadastro.

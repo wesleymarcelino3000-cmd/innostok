@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -110,8 +110,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub"></div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -190,9 +190,24 @@ th{background:#f8fafc}
           <div><label>Código interno automático</label><input class="app-input" id="codigoInternoPreview" disabled placeholder="Gerado automaticamente"></div>
         </div>
         <button class="action" style="margin-top:12px" onclick="add()">Salvar</button>
+        <button class="secondary-action" style="margin-top:12px;margin-left:8px" onclick="showSection('entradaEstoque')">Dar entrada em produto existente</button>
       </div>
 
-      <div id="manual" class="card hidden">
+      
+      <div id="entradaEstoque" class="card hidden">
+        <h3>Dar entrada em produto existente</h3>
+        <div class="form-row">
+          <div><label>Produto</label><select id="entradaProduto"></select></div>
+          <div><label>Quantidade a adicionar</label><input class="app-input" id="entradaQtd" type="number" min="1" value="1"></div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div><label>Observação</label><input class="app-input" id="entradaObs" placeholder="Ex: reposição, compra nova"></div>
+          <div></div>
+        </div>
+        <button class="success-action" style="margin-top:12px" onclick="darEntradaProduto()">Confirmar entrada</button>
+      </div>
+
+<div id="manual" class="card hidden">
         <h3>Baixa manual</h3>
         <div class="form-row">
           <div><label>Produto</label><select id="manualProduto"></select></div>
@@ -338,7 +353,7 @@ function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code1
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 
 function hideAllSections() {
-  ["account","users","produto","manual","estoqueView","historicoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -675,6 +690,43 @@ async function add() {
   await loadAll();
   render();
 }
+
+function preencherSelectEntradaProduto() {
+  const sel = byId("entradaProduto");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione</option>' + db.products.map((p, i) => `<option value="${i}">${p.name}${p.barcode ? ' - ' + p.barcode : ''}</option>`).join("");
+}
+
+async function darEntradaProduto() {
+  const idx = byId("entradaProduto") ? byId("entradaProduto").value : "";
+  const qtd = Number(byId("entradaQtd") ? byId("entradaQtd").value : 0);
+  const obs = byId("entradaObs") ? byId("entradaObs").value.trim() : "";
+  if (idx === "" || qtd <= 0) return alert("Selecione um produto e informe uma quantidade válida.");
+  const p = db.products[idx];
+  const novoEstoque = Number(p.stock || 0) + qtd;
+
+  await sb.from('products').update({ stock: novoEstoque }).eq('id', p.id);
+  await sb.from('movements').insert({
+    product_id: p.id,
+    product_name: p.name,
+    type: 'entrada',
+    quantity: qtd,
+    source: 'entrada_produto',
+    username: currentUser()?.username || '',
+    details: obs || 'Entrada de estoque em produto existente'
+  });
+
+  try {
+    await registrarHistorico('entrada_produto', 'entrada_produto', p.name, qtd, obs || 'Entrada de estoque em produto existente');
+  } catch (e) {}
+
+  if (byId("entradaQtd")) byId("entradaQtd").value = "1";
+  if (byId("entradaObs")) byId("entradaObs").value = "";
+  await loadAll();
+  render();
+  alert("Entrada registrada com sucesso.");
+}
+
 function preencherSelectProduto() {
   const sel = byId("manualProduto");
   sel.innerHTML = '<option value="">Selecione</option>' + db.products.map((p, i) => `<option value="${i}">${p.name}${p.barcode ? ' - ' + p.barcode : ''}</option>`).join("");
@@ -867,6 +919,7 @@ function render() {
   byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
   byId("s3").innerText = db.products.filter(p => Number(p.stock || 0) <= 0).length;
   preencherSelectProduto();
+  preencherSelectEntradaProduto();
   renderUsuarios();
   renderEtiquetas();
   renderEstoqueCompleto();
