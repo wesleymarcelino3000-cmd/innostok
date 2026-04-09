@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -110,8 +110,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub"></div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -516,6 +516,7 @@ async function bootstrap() {
     byId("app").classList.remove("hidden");
     applyUserPermissions();
     render();
+    applyUserPermissions();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
 }
@@ -585,6 +586,7 @@ async function login() {
       byId("app").classList.remove("hidden");
       applyUserPermissions();
       render();
+      applyUserPermissions();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
   } catch (e) {
@@ -604,6 +606,14 @@ function applyUserPermissions() {
   const operador = isOperador ? isOperador() : false;
   const conferente = isConferente ? isConferente() : false;
 
+  const setVisible = (id, visible) => {
+    const el = byId(id);
+    if (!el) return;
+    el.style.display = visible ? "block" : "none";
+    if (visible) el.classList.remove("hidden");
+    else el.classList.add("hidden");
+  };
+
   const usersBlocked = byId("usersBlocked");
   const usersAdminArea = byId("usersAdminArea");
   const accountBlocked = byId("accountBlocked");
@@ -614,63 +624,50 @@ function applyUserPermissions() {
   if (usersBlocked) usersBlocked.style.display = admin ? "none" : "block";
   if (usersAdminArea) usersAdminArea.style.display = admin ? "block" : "none";
 
-  const show = (id, visible) => {
-    const el = byId(id);
-    if (!el) return;
-    el.style.display = visible ? "block" : "none";
-    el.classList.toggle("hidden", !visible);
-  };
-
-  // admin
   if (admin) {
-    show("btnUsuarios", true);
-    show("btnVerEstoque", true);
-    show("btnNovoProduto", true);
-    show("btnEntradaEstoque", true);
-    show("btnBaixaManual", true);
-    show("btnExportarExcel", true);
-    show("btnEtiquetas", true);
-    show("btnFilaEtiquetas", true);
-    show("btnScanner", true);
-    show("historyBtn", true);
-  }
-  // conferente
-  else if (conferente) {
-    show("btnUsuarios", false);
-    show("btnVerEstoque", true);
-    show("btnNovoProduto", true);
-    show("btnEntradaEstoque", true);
-    show("btnBaixaManual", true);
-    show("btnExportarExcel", true);
-    show("btnEtiquetas", true);
-    show("btnFilaEtiquetas", true);
-    show("btnScanner", true);
-    show("historyBtn", false);
-  }
-  // operador
-  else if (operador) {
-    show("btnUsuarios", false);
-    show("btnVerEstoque", true);
-
-    show("btnNovoProduto", false);
-    show("btnEntradaEstoque", false);
-    show("btnBaixaManual", false);
-    show("btnExportarExcel", false);
-    show("btnEtiquetas", false);
-    show("btnFilaEtiquetas", false);
-    show("btnScanner", false);
-    show("historyBtn", false);
+    setVisible("btnUsuarios", true);
+    setVisible("btnVerEstoque", true);
+    setVisible("btnNovoProduto", true);
+    setVisible("btnEntradaEstoque", true);
+    setVisible("btnBaixaManual", true);
+    setVisible("btnExportarExcel", true);
+    setVisible("btnEtiquetas", true);
+    setVisible("btnFilaEtiquetas", true);
+    setVisible("btnScanner", true);
+    setVisible("historyBtn", true);
+  } else if (conferente) {
+    setVisible("btnUsuarios", false);
+    setVisible("btnVerEstoque", true);
+    setVisible("btnNovoProduto", true);
+    setVisible("btnEntradaEstoque", true);
+    setVisible("btnBaixaManual", true);
+    setVisible("btnExportarExcel", true);
+    setVisible("btnEtiquetas", true);
+    setVisible("btnFilaEtiquetas", true);
+    setVisible("btnScanner", true);
+    setVisible("historyBtn", false);
+  } else if (operador) {
+    setVisible("btnUsuarios", false);
+    setVisible("btnVerEstoque", true);
+    setVisible("btnNovoProduto", false);
+    setVisible("btnEntradaEstoque", false);
+    setVisible("btnBaixaManual", false);
+    setVisible("btnExportarExcel", false);
+    setVisible("btnEtiquetas", false);
+    setVisible("btnFilaEtiquetas", false);
+    setVisible("btnScanner", false);
+    setVisible("historyBtn", false);
   } else {
-    show("btnUsuarios", false);
-    show("btnVerEstoque", true);
-    show("btnNovoProduto", false);
-    show("btnEntradaEstoque", false);
-    show("btnBaixaManual", false);
-    show("btnExportarExcel", false);
-    show("btnEtiquetas", false);
-    show("btnFilaEtiquetas", false);
-    show("btnScanner", false);
-    show("historyBtn", false);
+    setVisible("btnUsuarios", false);
+    setVisible("btnVerEstoque", true);
+    setVisible("btnNovoProduto", false);
+    setVisible("btnEntradaEstoque", false);
+    setVisible("btnBaixaManual", false);
+    setVisible("btnExportarExcel", false);
+    setVisible("btnEtiquetas", false);
+    setVisible("btnFilaEtiquetas", false);
+    setVisible("btnScanner", false);
+    setVisible("historyBtn", false);
   }
 
   if (admin && u) {
