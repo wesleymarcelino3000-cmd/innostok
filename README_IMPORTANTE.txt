@@ -62,3 +62,7 @@ Atualização:
 Atualização:
 - sessão mantida mesmo ao atualizar a página e reabrir o navegador
 - logout manual limpa a sessão
+
+
+Atualização:
+- botões agora somem quando o usuário não tem acesso, seguindo as permissões já definidas por nível.
