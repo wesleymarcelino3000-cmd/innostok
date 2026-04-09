@@ -378,6 +378,7 @@ function showSection(id) {
   }
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
   if (id === "estoqueView") renderEstoqueCompleto();
+  if (id === "users") { applyUserPermissions(); renderUsuarios(); }
 }
 
 
@@ -596,18 +597,30 @@ async function login() {
 function logout() { db.sessionUser = null; location.reload(); }
 function applyUserPermissions() {
   const u = currentUser();
-  byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
+  if (byId("userChip")) byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
+
   const admin = isAdmin();
-  byId("accountBlocked").classList.toggle("hidden", admin);
-  byId("accountAdminArea").classList.toggle("hidden", !admin);
-  byId("usersBlocked").classList.toggle("hidden", admin);
-  byId("usersAdminArea").classList.toggle("hidden", !admin);
+  const usersBlocked = byId("usersBlocked");
+  const usersAdminArea = byId("usersAdminArea");
+  const accountBlocked = byId("accountBlocked");
+  const accountAdminArea = byId("accountAdminArea");
+  const btnUsuarios = byId("btnUsuarios");
+
+  if (btnUsuarios) btnUsuarios.classList.remove("hidden");
+
+  if (usersBlocked) usersBlocked.classList.toggle("hidden", admin);
+  if (usersAdminArea) usersAdminArea.classList.toggle("hidden", !admin);
+
+  if (accountBlocked) accountBlocked.classList.toggle("hidden", admin);
+  if (accountAdminArea) accountAdminArea.classList.toggle("hidden", !admin);
+
+  if (admin && u) {
+    if (byId("accNome")) byId("accNome").value = u.name || "";
+    if (byId("accUser")) byId("accUser").value = u.username || "";
+  }
+
   const historyBtn = byId("historyBtn");
   if (historyBtn) historyBtn.classList.toggle("hidden", !admin);
-  if (admin && u) {
-    byId("accNome").value = u.name || "";
-    byId("accUser").value = u.username || "";
-  }
 }
 async function salvarConta() {
   if (!isAdmin()) return alert("Somente o admin pode alterar usuário e senha.");
@@ -648,11 +661,11 @@ async function criarUsuario() {
   render();
 }
 async function editarUsuario(i) {
-  if (!isAdmin()) return;
+  if (!isAdmin()) return alert("Somente admin pode editar usuários.");
   const u = db.users[i];
   const name = prompt("Editar nome:", u.name);
   const username = prompt("Editar usuário:", u.username);
-  const role = prompt("Editar nível (admin ou operador):", u.role);
+  const role = prompt("Editar nível (admin, conferente ou operador):", u.role);
   if (name === null && username === null && role === null) return;
   await sb.from('app_users').update({
     name: name ?? u.name,
@@ -673,7 +686,17 @@ async function removerUsuario(i) {
   render();
 }
 function renderUsuarios() {
-  byId("listaUsuarios").innerHTML = db.users.map((u, i) => `<tr><td>${u.name}</td><td>${u.username}</td><td>${u.role}</td><td>${isAdmin() ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> ${`<button class="danger" onclick="removerUsuario(${i})">Excluir</button>`}` : ""}</td></tr>`).join("");
+  const tbody = byId("listaUsuarios");
+  if (!tbody) return;
+  const admin = isAdmin();
+  tbody.innerHTML = db.users.map((u, i) => `
+    <tr>
+      <td>${u.name || ""}</td>
+      <td>${u.username || ""}</td>
+      <td>${u.role || ""}</td>
+      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
+    </tr>
+  `).join("");
 }
 async function add() {
   if (isOperador()) return alert("Operador não pode adicionar novo produto.");
