@@ -39,3 +39,9 @@ Correção:
 
 Atualização:
 - opção para dar entrada em produto existente sem criar um novo cadastro.
+
+
+Atualização:
+- removida a lista fixa de produtos da parte de baixo
+- estoque volta a aparecer somente em Ver estoque
+- fundo com imagem aplicada na área principal
