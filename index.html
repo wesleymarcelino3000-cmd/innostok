@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -113,8 +113,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub"></div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -333,11 +333,11 @@ let scannerRunning = false;
 let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
-window.addEventListener("beforeunload", () => { try { db.sessionUser = null; } catch(e){} });
+
 
 function byId(id) { return document.getElementById(id); }
-function saveSession() { /* sessão não persistida */ }
-function loadSession() { db.sessionUser = null; }
+function saveSession() { sessionStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
+function loadSession() { db.sessionUser = sessionStorage.getItem("inno_stock_online_session_user") || null; }
 function currentUser() { return db.users.find(u => u.username === db.sessionUser) || null; }
 function isAdmin() { const u = currentUser(); return !!u && u.role === "admin"; }
 function isConferente() { const u = currentUser(); return !!u && u.role === "conferente"; }
@@ -359,23 +359,29 @@ function hideAllSections() {
 function showSection(id) {
   hideAllSections();
   const target = byId(id);
+
   if (target) {
     target.classList.remove("hidden");
     target.classList.remove("section-anim-in");
     void target.offsetWidth;
     target.classList.add("section-anim-in");
+
     setTimeout(() => {
       try {
         const main = document.querySelector(".main");
         if (main) {
-          const top = target.offsetTop - 12;
-          main.scrollTo({ top: top < 0 ? 0 : top, behavior: "smooth" });
+          main.scrollTop = 0;
+          setTimeout(() => {
+            const y = target.offsetTop - 10;
+            main.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
+          }, 50);
+        } else {
+          window.scrollTo({ top: target.offsetTop, behavior: "smooth" });
         }
       } catch (e) {}
-    }, 120);
-  } else {
-    console.warn("Seção não encontrada:", id);
+    }, 100);
   }
+
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
   if (id === "estoqueView") renderEstoqueCompleto();
   if (id === "users") { applyUserPermissions(); renderUsuarios(); }
@@ -594,7 +600,7 @@ async function login() {
     }
   }
 }
-function logout() { db.sessionUser = null; location.reload(); }
+function logout() { db.sessionUser = null; sessionStorage.removeItem("inno_stock_online_session_user"); location.reload(); }
 function applyUserPermissions() {
   const u = currentUser();
   if (byId("userChip")) byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
