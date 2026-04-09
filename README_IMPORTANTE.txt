@@ -31,3 +31,7 @@ Atualização:
 Atualização:
 - sempre pede login ao abrir novamente o sistema
 - no celular, ao tocar em um botão do menu, a tela desce automaticamente até a função
+
+
+Correção:
+- no celular, o menu agora rola a área principal automaticamente até a função selecionada.
