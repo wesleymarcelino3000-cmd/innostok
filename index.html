@@ -600,8 +600,8 @@ function applyUserPermissions() {
   const u = currentUser();
   if (byId("userChip")) byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
 
-  const admin = isAdmin();
-  const operador = isOperador();
+  const admin = isAdmin ? isAdmin() : false;
+  const operador = isOperador ? isOperador() : false;
   const conferente = isConferente ? isConferente() : false;
 
   const usersBlocked = byId("usersBlocked");
@@ -609,26 +609,68 @@ function applyUserPermissions() {
   const accountBlocked = byId("accountBlocked");
   const accountAdminArea = byId("accountAdminArea");
 
-  if (accountBlocked) accountBlocked.classList.toggle("hidden", admin);
-  if (accountAdminArea) accountAdminArea.classList.toggle("hidden", !admin);
-  if (usersBlocked) usersBlocked.classList.toggle("hidden", admin);
-  if (usersAdminArea) usersAdminArea.classList.toggle("hidden", !admin);
+  if (accountBlocked) accountBlocked.style.display = admin ? "none" : "block";
+  if (accountAdminArea) accountAdminArea.style.display = admin ? "block" : "none";
+  if (usersBlocked) usersBlocked.style.display = admin ? "none" : "block";
+  if (usersAdminArea) usersAdminArea.style.display = admin ? "block" : "none";
 
-  // Admin vê tudo
-  // Conferente: vê quase tudo, menos gerenciamento de usuários/histórico admin se você quiser manter só admin
-  // Operador: ocultar conforme regras já definidas
-  setMenuVisibility("btnVerEstoque", true);
+  const show = (id, visible) => {
+    const el = byId(id);
+    if (!el) return;
+    el.style.display = visible ? "block" : "none";
+    el.classList.toggle("hidden", !visible);
+  };
 
-  setMenuVisibility("btnUsuarios", admin);
-  setMenuVisibility("historyBtn", admin);
-
-  setMenuVisibility("btnNovoProduto", !operador);
-  setMenuVisibility("btnEntradaEstoque", !operador);
-  setMenuVisibility("btnBaixaManual", !operador);
-  setMenuVisibility("btnExportarExcel", !operador);
-  setMenuVisibility("btnEtiquetas", !operador);
-  setMenuVisibility("btnFilaEtiquetas", !operador);
-  setMenuVisibility("btnScanner", !operador);
+  // admin
+  if (admin) {
+    show("btnUsuarios", true);
+    show("btnVerEstoque", true);
+    show("btnNovoProduto", true);
+    show("btnEntradaEstoque", true);
+    show("btnBaixaManual", true);
+    show("btnExportarExcel", true);
+    show("btnEtiquetas", true);
+    show("btnFilaEtiquetas", true);
+    show("btnScanner", true);
+    show("historyBtn", true);
+  }
+  // conferente
+  else if (conferente) {
+    show("btnUsuarios", false);
+    show("btnVerEstoque", true);
+    show("btnNovoProduto", true);
+    show("btnEntradaEstoque", true);
+    show("btnBaixaManual", true);
+    show("btnExportarExcel", true);
+    show("btnEtiquetas", true);
+    show("btnFilaEtiquetas", true);
+    show("btnScanner", true);
+    show("historyBtn", false);
+  }
+  // operador
+  else if (operador) {
+    show("btnUsuarios", false);
+    show("btnVerEstoque", true);
+    show("btnNovoProduto", false);
+    show("btnEntradaEstoque", false);
+    show("btnBaixaManual", false);
+    show("btnExportarExcel", false);
+    show("btnEtiquetas", false);
+    show("btnFilaEtiquetas", false);
+    show("btnScanner", false);
+    show("historyBtn", false);
+  } else {
+    show("btnUsuarios", false);
+    show("btnVerEstoque", true);
+    show("btnNovoProduto", false);
+    show("btnEntradaEstoque", false);
+    show("btnBaixaManual", false);
+    show("btnExportarExcel", false);
+    show("btnEtiquetas", false);
+    show("btnFilaEtiquetas", false);
+    show("btnScanner", false);
+    show("historyBtn", false);
+  }
 
   if (admin && u) {
     if (byId("accNome")) byId("accNome").value = u.name || "";
