@@ -11,7 +11,7 @@
 <style>
 :root{--bg1:#020617;--bg2:#0f172a;--bg3:#1e3a8a;--blue:#2563eb;--sidebar:#031126}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;background:url('background.avif') center/cover fixed no-repeat;color:#111827}
+html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;background:url('background.png') center/cover fixed no-repeat;color:#111827}
 .hidden{display:none !important}
 .login{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px;background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3))}
 .login-card{width:100%;max-width:430px;background:linear-gradient(145deg,rgba(22,101,52,.96),rgba(21,128,61,.96));border-radius:30px;padding:34px 30px 28px;text-align:center;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.45)}
@@ -27,7 +27,7 @@ html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;backgrou
 .success-action{background:#16a34a;color:#fff}
 .danger{background:#fee2e2;color:#991b1b}
 .layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
-.sidebar{background:var(--sidebar);color:#fff;padding:20px;min-height:100vh}
+.sidebar{background:var(--sidebar);color:#fff;padding:20px;min-height:100vh;position:sticky;top:0;align-self:start}
 .sidebar img{height:48px;margin-bottom:10px}
 .sidebar h2{margin:8px 0 4px;font-size:28px}
 .sidebar .sub{color:#cbd5e1;margin-bottom:18px;font-size:18px}
@@ -353,16 +353,6 @@ function hideAllSections() {
     if (el) el.classList.add("hidden");
   });
 }
-function getOffsetWithinContainer(el, container) {
-  let top = 0;
-  let node = el;
-  while (node && node !== container) {
-    top += node.offsetTop || 0;
-    node = node.offsetParent;
-  }
-  return top;
-}
-
 function showSection(id) {
   hideAllSections();
   const target = byId(id);
@@ -375,14 +365,17 @@ function showSection(id) {
 
     setTimeout(() => {
       try {
+        const rect = target.getBoundingClientRect();
+        const absoluteTop = window.pageYOffset + rect.top - 12;
+        window.scrollTo({ top: absoluteTop < 0 ? 0 : absoluteTop, behavior: "smooth" });
+
         const main = document.querySelector(".main");
         if (main) {
-          const pos = getOffsetWithinContainer(target, main) - 10;
-          main.scrollTo({ top: pos < 0 ? 0 : pos, behavior: "smooth" });
+          const targetTop = target.offsetTop - 12;
+          main.scrollTo({ top: targetTop < 0 ? 0 : targetTop, behavior: "smooth" });
         }
-        window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (e) {}
-    }, 150);
+    }, 120);
   }
 
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
