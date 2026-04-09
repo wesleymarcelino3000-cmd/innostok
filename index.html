@@ -11,7 +11,7 @@
 <style>
 :root{--bg1:#020617;--bg2:#0f172a;--bg3:#1e3a8a;--blue:#2563eb;--sidebar:#031126}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;background:#eef2f7;color:#111827}
+html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;background:url('background.avif') center/cover fixed no-repeat;color:#111827}
 .hidden{display:none !important}
 .login{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px;background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3))}
 .login-card{width:100%;max-width:430px;background:linear-gradient(145deg,rgba(22,101,52,.96),rgba(21,128,61,.96));border-radius:30px;padding:34px 30px 28px;text-align:center;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.45)}
@@ -34,11 +34,8 @@ html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;backgrou
 .user-chip{display:inline-block;padding:10px 16px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-weight:700;margin-bottom:16px;font-size:18px}
 .sidebar button{width:100%;margin:8px 0;padding:14px 16px;border:none;border-radius:18px;background:#dbeafe;color:#1d4ed8;font-weight:700;cursor:pointer;display:block;text-align:center;font-size:16px}
 .sidebar .logout{background:#0f172a;color:#fff}
-.main{padding:22px;overflow:auto;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;
-background:
-linear-gradient(rgba(245,247,251,.92), rgba(245,247,251,.92)),
-url('background.avif') center/cover fixed no-repeat}
-.top-card,.card{background:rgba(255,255,255,.90);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05);margin-bottom:16px}
+.main{padding:22px;overflow:auto;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;background:transparent}
+.top-card,.card{background:rgba(255,255,255,.78);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05);margin-bottom:16px}
 .grid{display:grid;gap:16px}
 .g3{grid-template-columns:repeat(3,1fr)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -356,6 +353,16 @@ function hideAllSections() {
     if (el) el.classList.add("hidden");
   });
 }
+function getOffsetWithinContainer(el, container) {
+  let top = 0;
+  let node = el;
+  while (node && node !== container) {
+    top += node.offsetTop || 0;
+    node = node.offsetParent;
+  }
+  return top;
+}
+
 function showSection(id) {
   hideAllSections();
   const target = byId(id);
@@ -369,25 +376,13 @@ function showSection(id) {
     setTimeout(() => {
       try {
         const main = document.querySelector(".main");
-
         if (main) {
-          main.scrollTop = 0;
-
-          setTimeout(() => {
-            const pos = target.getBoundingClientRect().top + main.scrollTop - 10;
-            main.scrollTo({
-              top: pos < 0 ? 0 : pos,
-              behavior: "smooth"
-            });
-          }, 50);
-        } else {
-          window.scrollTo({
-            top: target.offsetTop,
-            behavior: "smooth"
-          });
+          const pos = getOffsetWithinContainer(target, main) - 10;
+          main.scrollTo({ top: pos < 0 ? 0 : pos, behavior: "smooth" });
         }
+        window.scrollTo({ top: 0, behavior: "smooth" });
       } catch (e) {}
-    }, 120);
+    }, 150);
   }
 
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
