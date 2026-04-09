@@ -78,6 +78,13 @@ th{background:#f8fafc}
 @keyframes spinLogin{to{transform:rotate(360deg)}}
 @keyframes successFlash{0%{transform:scale(1);opacity:1}50%{transform:scale(1.03);opacity:.94}100%{transform:scale(1);opacity:1}}
 
+
+.section-anim-in{animation:sectionFadeSlide .28s ease}
+@keyframes sectionFadeSlide{
+  0%{opacity:0;transform:translateY(14px)}
+  100%{opacity:1;transform:translateY(0)}
+}
+
 </style>
 </head>
 <body>
@@ -341,6 +348,9 @@ function showSection(id) {
   const target = byId(id);
   if (target) {
     target.classList.remove("hidden");
+    target.classList.remove("section-anim-in");
+    void target.offsetWidth;
+    target.classList.add("section-anim-in");
 
     setTimeout(() => {
       try {
@@ -487,7 +497,7 @@ async function bootstrap() {
     byId("app").classList.remove("hidden");
     applyUserPermissions();
     render();
-    showSection("produto");
+    hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
 }
 async function testConnection() {
@@ -556,7 +566,7 @@ async function login() {
       byId("app").classList.remove("hidden");
       applyUserPermissions();
       render();
-      showSection("produto");
+      hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
   } catch (e) {
     if (loading) loading.classList.remove("show");
