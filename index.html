@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -110,8 +110,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub"></div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -357,6 +357,12 @@ function showSection(id) {
   hideAllSections();
   const target = byId(id);
 
+  if (id === "estoqueView") renderEstoqueCompleto();
+  if (id === "users") {
+    applyUserPermissions();
+    renderUsuarios();
+  }
+
   if (target) {
     target.classList.remove("hidden");
     target.classList.remove("section-anim-in");
@@ -365,24 +371,14 @@ function showSection(id) {
 
     setTimeout(() => {
       try {
-        const rect = target.getBoundingClientRect();
-        const absoluteTop = window.pageYOffset + rect.top - 12;
-        window.scrollTo({ top: absoluteTop < 0 ? 0 : absoluteTop, behavior: "smooth" });
-
-        const main = document.querySelector(".main");
-        if (main) {
-          const targetTop = target.offsetTop - 12;
-          main.scrollTo({ top: targetTop < 0 ? 0 : targetTop, behavior: "smooth" });
-        }
+        const y = Math.max(0, window.pageYOffset + target.getBoundingClientRect().top - 12);
+        window.scrollTo({ top: y, behavior: "smooth" });
       } catch (e) {}
-    }, 120);
+    }, 140);
   }
 
-  if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
-  if (id === "estoqueView") renderEstoqueCompleto();
-  if (id === "users") {
-    applyUserPermissions();
-    renderUsuarios();
+  if (id === "produto" && byId("codigoInternoPreview")) {
+    byId("codigoInternoPreview").value = "Será gerado ao salvar";
   }
 }
 
@@ -1291,6 +1287,21 @@ function renderHistorico() {
   }).join("");
   tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum histórico encontrado.</td></tr>`;
 }
+
+
+document.addEventListener("click", function(ev) {
+  const btn = ev.target.closest(".sidebar button");
+  if (!btn) return;
+  setTimeout(() => {
+    try {
+      const active = document.querySelector(".main .card:not(.hidden)");
+      if (active) {
+        const y = Math.max(0, window.pageYOffset + active.getBoundingClientRect().top - 12);
+        window.scrollTo({ top: y, behavior: "smooth" });
+      }
+    } catch (e) {}
+  }, 180);
+});
 
 bootstrap();
 </script>
