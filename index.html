@@ -38,7 +38,7 @@ html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;backgrou
 background:
 linear-gradient(rgba(245,247,251,.92), rgba(245,247,251,.92)),
 url('background.avif') center/cover fixed no-repeat}
-.top-card,.card{background:rgba(255,255,255,.92);backdrop-filter:blur(2px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05);margin-bottom:16px}
+.top-card,.card{background:rgba(255,255,255,.90);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05);margin-bottom:16px}
 .grid{display:grid;gap:16px}
 .g3{grid-template-columns:repeat(3,1fr)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -369,22 +369,33 @@ function showSection(id) {
     setTimeout(() => {
       try {
         const main = document.querySelector(".main");
+
         if (main) {
           main.scrollTop = 0;
+
           setTimeout(() => {
-            const y = target.offsetTop - 10;
-            main.scrollTo({ top: y < 0 ? 0 : y, behavior: "smooth" });
+            const pos = target.getBoundingClientRect().top + main.scrollTop - 10;
+            main.scrollTo({
+              top: pos < 0 ? 0 : pos,
+              behavior: "smooth"
+            });
           }, 50);
         } else {
-          window.scrollTo({ top: target.offsetTop, behavior: "smooth" });
+          window.scrollTo({
+            top: target.offsetTop,
+            behavior: "smooth"
+          });
         }
       } catch (e) {}
-    }, 100);
+    }, 120);
   }
 
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
   if (id === "estoqueView") renderEstoqueCompleto();
-  if (id === "users") { applyUserPermissions(); renderUsuarios(); }
+  if (id === "users") {
+    applyUserPermissions();
+    renderUsuarios();
+  }
 }
 
 
