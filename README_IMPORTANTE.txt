@@ -57,3 +57,8 @@ Atualização:
 Atualização:
 - ao atualizar a página, o usuário permanece logado
 - ao fechar a aba/navegador, a sessão é encerrada automaticamente
+
+
+Atualização:
+- sessão mantida mesmo ao atualizar a página e reabrir o navegador
+- logout manual limpa a sessão

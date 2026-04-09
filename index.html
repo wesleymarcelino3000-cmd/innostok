@@ -336,8 +336,8 @@ let audioCtx = null;
 
 
 function byId(id) { return document.getElementById(id); }
-function saveSession() { sessionStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
-function loadSession() { db.sessionUser = sessionStorage.getItem("inno_stock_online_session_user") || null; }
+function saveSession() { localStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
+function loadSession() { db.sessionUser = localStorage.getItem("inno_stock_online_session_user") || null; }
 function currentUser() { return db.users.find(u => u.username === db.sessionUser) || null; }
 function isAdmin() { const u = currentUser(); return !!u && u.role === "admin"; }
 function isConferente() { const u = currentUser(); return !!u && u.role === "conferente"; }
@@ -600,7 +600,7 @@ async function login() {
     }
   }
 }
-function logout() { db.sessionUser = null; sessionStorage.removeItem("inno_stock_online_session_user"); location.reload(); }
+function logout() { db.sessionUser = null; localStorage.removeItem("inno_stock_online_session_user"); location.reload(); }
 function applyUserPermissions() {
   const u = currentUser();
   if (byId("userChip")) byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
