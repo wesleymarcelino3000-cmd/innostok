@@ -45,3 +45,10 @@ Atualização:
 - removida a lista fixa de produtos da parte de baixo
 - estoque volta a aparecer somente em Ver estoque
 - fundo com imagem aplicada na área principal
+
+
+Atualização:
+- voltou editar/excluir produto dentro de Ver estoque
+- novo nível Conferente
+- Operador não vê: baixa manual, novo produto, exportar excel, etiqueta de estoque, fila de etiquetas e scanner no celular
+- operador também não pode editar/excluir produto no estoque
