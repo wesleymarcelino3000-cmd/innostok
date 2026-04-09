@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -11,7 +11,7 @@
 <style>
 :root{--bg1:#020617;--bg2:#0f172a;--bg3:#1e3a8a;--blue:#2563eb;--sidebar:#031126}
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#111827}
+html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;background:#f5f7fb;color:#111827}
 .hidden{display:none !important}
 .login{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:24px;background:linear-gradient(135deg,var(--bg1),var(--bg2),var(--bg3))}
 .login-card{width:100%;max-width:430px;background:linear-gradient(145deg,rgba(22,101,52,.96),rgba(21,128,61,.96));border-radius:30px;padding:34px 30px 28px;text-align:center;color:#fff;box-shadow:0 30px 80px rgba(0,0,0,.45)}
@@ -67,6 +67,17 @@ th{background:#f8fafc}
   .label-card{page-break-after:always;margin:0!important}
 }
 @media(max-width:1100px){.layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}.main{padding:14px}}
+
+.overlay-loading{position:fixed;inset:0;background:rgba(3,17,38,.82);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
+.overlay-loading.show{display:flex}
+.loading-card{background:#fff;border-radius:24px;padding:28px 34px;min-width:280px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.loading-spinner{width:56px;height:56px;border:6px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;margin:0 auto 16px auto;animation:spinLogin 1s linear infinite}
+.loading-title{font-size:18px;font-weight:800;color:#031126;margin-bottom:6px}
+.loading-sub{font-size:14px;color:#64748b}
+.login-success-flash{animation:successFlash .55s ease}
+@keyframes spinLogin{to{transform:rotate(360deg)}}
+@keyframes successFlash{0%{transform:scale(1);opacity:1}50%{transform:scale(1.03);opacity:.94}100%{transform:scale(1);opacity:1}}
+
 </style>
 </head>
 <body>
@@ -80,12 +91,20 @@ th{background:#f8fafc}
   </div>
 </div>
 
+<div id="loginLoading" class="overlay-loading">
+  <div class="loading-card">
+    <div class="loading-spinner"></div>
+    <div class="loading-title">Entrando no sistema</div>
+    <div class="loading-sub">Carregando seus dados...</div>
+  </div>
+</div>
+
 <div id="app" class="hidden">
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub"></div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account')">Minha conta</button>
       <button onclick="showSection('users')">Usuários</button>
@@ -103,7 +122,7 @@ th{background:#f8fafc}
     <div class="main">
       <div class="top-card">
         <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280"></div>
+        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -297,10 +316,11 @@ let scannerRunning = false;
 let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
+window.addEventListener("beforeunload", () => { try { db.sessionUser = null; } catch(e){} });
 
 function byId(id) { return document.getElementById(id); }
-function saveSession() { localStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
-function loadSession() { db.sessionUser = localStorage.getItem("inno_stock_online_session_user") || null; }
+function saveSession() { /* sessão não persistida */ }
+function loadSession() { db.sessionUser = null; }
 function currentUser() { return db.users.find(u => u.username === db.sessionUser) || null; }
 function isAdmin() { const u = currentUser(); return !!u && u.role === "admin"; }
 function nextInternalCode() { db.lastInternalCode += 1; return "INT-" + String(db.lastInternalCode).padStart(6, "0"); }
@@ -319,7 +339,15 @@ function hideAllSections() {
 function showSection(id) {
   hideAllSections();
   const target = byId(id);
-  if (target) target.classList.remove("hidden");
+  if (target) {
+    target.classList.remove("hidden");
+    setTimeout(() => {
+      try {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.scrollBy({ top: -8, behavior: "smooth" });
+      } catch (e) {}
+    }, 80);
+  }
   if (id === "produto" && byId("codigoInternoPreview")) byId("codigoInternoPreview").value = "Será gerado ao salvar";
 }
 
@@ -492,23 +520,48 @@ async function login() {
   clearNotice();
   const user = byId("username").value.trim();
   const pass = byId("password").value.trim();
-  const res = await sb.from('app_users').select('*').eq('username', user).eq('password', pass).limit(1);
-  if (res.error || !res.data || !res.data.length) {
-    const el = byId("loginError");
-    el.textContent = "Usuário ou senha inválidos.";
-    el.style.display = "block";
-    return;
+  const err = byId("loginError");
+  if (err) err.style.display = "none";
+
+  const loading = byId("loginLoading");
+  if (loading) loading.classList.add("show");
+
+  try {
+    const res = await sb.from('app_users').select('*').eq('username', user).eq('password', pass).limit(1);
+
+    if (res.error || !res.data || !res.data.length) {
+      if (loading) loading.classList.remove("show");
+      if (err) {
+        err.textContent = "Usuário ou senha inválidos.";
+        err.style.display = "block";
+      }
+      return;
+    }
+
+    db.sessionUser = res.data[0].username;
+    saveSession();
+    await loadAll();
+
+    const loginPage = byId("loginPage");
+    if (loginPage) loginPage.classList.add("login-success-flash");
+
+    setTimeout(() => {
+      if (loading) loading.classList.remove("show");
+      if (loginPage) loginPage.classList.add("hidden");
+      byId("app").classList.remove("hidden");
+      applyUserPermissions();
+      render();
+      showSection("produto");
+    }, 850);
+  } catch (e) {
+    if (loading) loading.classList.remove("show");
+    if (err) {
+      err.textContent = "Não foi possível entrar agora.";
+      err.style.display = "block";
+    }
   }
-  db.sessionUser = res.data[0].username;
-  saveSession();
-  await loadAll();
-  byId("loginPage").classList.add("hidden");
-  byId("app").classList.remove("hidden");
-  applyUserPermissions();
-  render();
-  showSection("produto");
 }
-function logout() { db.sessionUser = null; saveSession(); location.reload(); }
+function logout() { db.sessionUser = null; location.reload(); }
 function applyUserPermissions() {
   const u = currentUser();
   byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");

@@ -26,3 +26,8 @@ Atualização:
 - fila de etiquetas pendentes
 - quando baixar uma etiqueta parcial, o restante fica em espera para imprimir depois
 - botão para imprimir todas as pendentes de uma vez
+
+
+Atualização:
+- sempre pede login ao abrir novamente o sistema
+- no celular, ao tocar em um botão do menu, a tela desce automaticamente até a função
