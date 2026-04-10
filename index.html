@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -125,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub">InnoLife</div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -143,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Inno Stok</h1>
-        <div style="color:#6b7280">InnoLife</div>
+        <h1 style="margin:0 0 6px">Painel de gestão</h1>
+        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -460,6 +460,7 @@ function montarCardEtiqueta(nome, quantidade, stockLabel) {
     <div class="label-card">
       <div class="label-main-name">${nome || ""}</div>
       <div class="label-qty">Quantidade atual: ${Number(quantidade || 0)}</div>
+      <div style=\"font-size:14px;font-weight:700;text-align:center;margin-bottom:8px\">Data: ${new Date().toLocaleDateString('pt-BR')}</div>
       <div class="label-simple-grid">
         <div>
           <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
