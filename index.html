@@ -857,32 +857,94 @@ function renderEtiquetas() {
   tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
 function gerarEtiqueta(i) {
-  if (isOperador()) return alert("Operador não pode gerar etiqueta.");
   const p = db.products[i];
-  const qty = Math.max(1, Number(byId("labelQty")?.value || 1));
-  if (byId("labelUnitsStock") && !byId("labelUnitsStock").dataset.userEdited) byId("labelUnitsStock").value = p.stock || 1;
-  const unitsStock = Math.max(1, Number(byId("labelUnitsStock")?.value || p.stock || 1));
-  let cards = "";
-  for (let n = 0; n < qty; n++) {
-    cards += `
-      <div class="label-card">
-        <div class="label-main-name">${p.name}</div>
-        <div class="label-qty">Quantidade atual: ${unitsStock}</div>
-        <div class="label-simple-grid">
-          <div>
-            <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
-            <img src="${qrUrl(p.stock_label)}" style="max-width:100%;display:block;margin:0 auto 6px auto">
-          </div>
-          <div>
-            <div style="text-align:center;font-weight:700;margin-bottom:6px">Código de barras</div>
-            <img src="${barcodeUrl(p.stock_label)}" style="max-width:100%;display:block;margin:0 auto 6px auto">
-            <div style="font-family:monospace;word-break:break-all;text-align:center">${p.stock_label}</div>
-          </div>
+  if (!p) return;
+
+  const win = window.open("", "_blank");
+
+  win.document.write(`
+    <html>
+    <head>
+      <title>Etiqueta</title>
+      <style>
+        @page {
+          size: 100mm 150mm;
+          margin: 0;
+        }
+
+        body {
+          margin: 0;
+          padding: 0;
+          width: 100mm;
+          height: 150mm;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          font-family: Arial, sans-serif;
+        }
+
+        .etiqueta {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          align-items: center;
+          text-align: center;
+          padding: 10px;
+          box-sizing: border-box;
+        }
+
+        h1 {
+          font-size: 22px;
+          margin: 5px 0;
+        }
+
+        .qtd {
+          font-size: 18px;
+          margin-bottom: 10px;
+        }
+
+        img {
+          max-width: 80%;
+        }
+
+        .barcode {
+          margin-top: 10px;
+        }
+
+        .codigo {
+          font-size: 12px;
+          margin-top: 5px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="etiqueta">
+        <h1>${p.name}</h1>
+        <div class="qtd">Quantidade: ${p.stock}</div>
+
+        <div>
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${p.barcode || p.name}">
         </div>
-      </div>`;
-  }
-  byId("labelSheet").innerHTML = cards;
-  byId("printArea").classList.remove("hidden");
+
+        <div class="barcode">
+          <img src="https://barcode.tec-it.com/barcode.ashx?data=${p.barcode || p.name}&code=Code128">
+          <div class="codigo">${p.barcode || p.name}</div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = () => {
+          window.print();
+          setTimeout(() => window.close(), 500);
+        }
+      </script>
+    </body>
+    </html>
+  `);
+
+  win.document.close();
 }
 function fecharEtiqueta() { byId("printArea").classList.add("hidden"); }
 function findProductByScannedCode(code) { return db.products.findIndex(p => p.stock_label === code || p.barcode === code); }
