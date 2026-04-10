@@ -265,7 +265,7 @@ th{background:#f8fafc}
           <div><label>Tamanho</label><input class="app-input" value="100 x 150 mm" disabled></div><div></div>
         </div>
         <div class="wrap">
-          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody><tbody id="listaProdutos"></tbody></table>
+          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody></table>
         </div>
         <div id="printArea" class="hidden" style="margin-top:16px">
           <div id="labelSheet" class="label-sheet"></div>
@@ -387,6 +387,9 @@ function showSection(id) {
   }
   if (id === "manual") {
     try { preencherSelectProduto(); } catch(e) {}
+  }
+  if (id === "etiquetas") {
+    try { renderEtiquetas(); } catch(e) {}
   }
 }
 
@@ -555,6 +558,7 @@ async function loadAll() {
   await loadHistorico();
   await loadPendingLabels();
   try { preencherSelectProduto(); } catch(e) {}
+  try { renderEtiquetas(); } catch(e) {}
   db.lastInternalCode = db.products.reduce((m, p) => {
     const n = Number(String(p.internal_code || '').replace('INT-',''));
     return Number.isFinite(n) ? Math.max(m, n) : m;
@@ -847,7 +851,10 @@ async function registrarManual() {
   }
 }
 function renderEtiquetas() {
-  byId("listaEtiquetas").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
+  const tbody = byId("listaEtiquetas");
+  if (!tbody) return;
+  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
 function gerarEtiqueta(i) {
   if (isOperador()) return alert("Operador não pode gerar etiqueta.");
@@ -1020,6 +1027,7 @@ function render() {
   renderEtiquetas();
   renderEstoqueCompleto();
   renderHistorico();
+  renderEtiquetas();
   renderFilaEtiquetas();
 }
 
@@ -1221,6 +1229,7 @@ function aplicarFiltroHistorico() {
   }
   db.filteredMovements = items;
   renderHistorico();
+  renderEtiquetas();
   renderFilaEtiquetas();
 }
 
@@ -1229,6 +1238,7 @@ function limparFiltroHistorico() {
   if (byId("histDateEnd")) byId("histDateEnd").value = "";
   db.filteredMovements = [...(db.movements || [])];
   renderHistorico();
+  renderEtiquetas();
   renderFilaEtiquetas();
 }
 
@@ -1239,6 +1249,7 @@ async function limparHistorico() {
   await sb.from('movements').delete().gt('id', 0);
   await loadHistorico();
   renderHistorico();
+  renderEtiquetas();
   renderFilaEtiquetas();
 }
 
@@ -1251,6 +1262,7 @@ async function limparHistoricoHoje() {
   await sb.from('movements').delete().gte('created_at', inicio);
   await loadHistorico();
   renderHistorico();
+  renderEtiquetas();
   renderFilaEtiquetas();
 }
 
