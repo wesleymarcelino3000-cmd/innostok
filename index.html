@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -110,8 +110,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub"></div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -165,7 +165,7 @@ th{background:#f8fafc}
           </div>
           <button class="action" style="margin-top:12px" onclick="criarUsuario()">Cadastrar usuário</button>
           <div class="wrap" style="margin-top:16px">
-            <table><thead><tr><th>Nome</th><th>Usuário</th><th>Nível</th><th>Ações</th></tr></thead><tbody id="listaUsuarios"></tbody></table>
+            <table><thead><tr><th>Nome</th><th>Usuário</th><th>Nível</th><th>Ações</th></tr></thead><tbody id="listaUsuarios"></tbody><tbody id="listaProdutos"></tbody></table>
           </div>
         </div>
       </div>
@@ -220,7 +220,7 @@ th{background:#f8fafc}
           <table>
             <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
             <tbody id="listaEstoqueCompleto"></tbody>
-          </table>
+          <tbody id="listaProdutos"></tbody></table>
         </div>
       </div>
 
@@ -251,7 +251,7 @@ th{background:#f8fafc}
               </tr>
             </thead>
             <tbody id="listaHistorico"></tbody>
-          </table>
+          <tbody id="listaProdutos"></tbody></table>
         </div>
       </div>
 
@@ -265,7 +265,7 @@ th{background:#f8fafc}
           <div><label>Tamanho</label><input class="app-input" value="100 x 150 mm" disabled></div><div></div>
         </div>
         <div class="wrap">
-          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody></table>
+          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody><tbody id="listaProdutos"></tbody></table>
         </div>
         <div id="printArea" class="hidden" style="margin-top:16px">
           <div id="labelSheet" class="label-sheet"></div>
@@ -293,7 +293,7 @@ th{background:#f8fafc}
               </tr>
             </thead>
             <tbody id="listaFilaEtiquetas"></tbody>
-          </table>
+          <tbody id="listaProdutos"></tbody></table>
         </div>
         <div id="filaPrintArea" class="hidden" style="margin-top:16px">
           <div id="filaLabelSheet" class="label-sheet"></div>
@@ -354,6 +354,11 @@ function hideAllSections() {
   });
 }
 function showSection(id) {
+  if (id === "produto") {
+    setTimeout(() => {
+      try { renderProdutos(); } catch(e){}
+    }, 100);
+  }
   hideAllSections();
   const target = byId(id);
 
@@ -1360,3 +1365,20 @@ bootstrap();
 </script>
 </body>
 </html>
+
+
+<script>
+function renderProdutos() {
+  const lista = document.getElementById("listaProdutos");
+  if (!lista || !window.db || !db.produtos) return;
+
+  lista.innerHTML = db.produtos.map((p, i) => `
+    <tr>
+      <td>${p.nome || ""}</td>
+      <td>${p.codigo || ""}</td>
+      <td>${p.quantidade || 0}</td>
+      <td>${p.preco || 0}</td>
+    </tr>
+  `).join("");
+}
+</script>
