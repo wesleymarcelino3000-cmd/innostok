@@ -129,7 +129,7 @@ th{background:#f8fafc}
     <div class="main">
       <div class="top-card">
         <h1 style="margin:0 0 6px">Inno Stok</h1>
-        <div style="color:#6b7280"></div>
+        <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -1386,5 +1386,28 @@ function renderProdutos() {
       <td>${p.preco || 0}</td>
     </tr>
   `).join("");
+}
+</script>
+
+
+<script>
+function gerarEtiquetaManual() {
+  const nome = document.getElementById("etqNome")?.value || "Produto";
+  const qtd = document.getElementById("etqQtd")?.value || "1";
+
+  const conteudo = `
+    <div style="width:100mm;height:150mm;display:flex;flex-direction:column;justify-content:center;align-items:center;font-family:Arial">
+      <h2>${nome}</h2>
+      <p>Quantidade: ${qtd}</p>
+    </div>
+  `;
+
+  const w = window.open("", "_blank");
+  w.document.write(conteudo);
+  w.document.close();
+}
+
+function imprimirEtiqueta() {
+  window.print();
 }
 </script>
