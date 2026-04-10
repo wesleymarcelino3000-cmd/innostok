@@ -1007,7 +1007,8 @@ function gerarEtiqueta(i) {
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
-    const qty = Number(p.stock || 0);
+    const digitado = Number(byId("labelUnitsStock")?.value || 0);
+    const qty = digitado > 0 ? digitado : Number(p.stock || 0);
 
     const win = window.open("", "_blank");
     if (!win) {
@@ -1017,6 +1018,8 @@ function gerarEtiqueta(i) {
 
     const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(code);
     const barSrc = "https://barcode.tec-it.com/barcode.ashx?data=" + encodeURIComponent(code) + "&code=Code128";
+
+    registrarEtiquetaAtiva(p.id, p.name, qty, code);
 
     win.document.write(`<!doctype html>
 <html>
