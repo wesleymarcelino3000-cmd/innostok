@@ -861,80 +861,114 @@ function gerarEtiqueta(i) {
     const p = db.products[i];
     if (!p) return;
 
+    const code = p.stock_label || p.barcode || p.name || "";
+    const qty = Number(p.stock || 0);
+
     const win = window.open("", "_blank");
+    if (!win) {
+      alert("Permita pop-up para imprimir a etiqueta.");
+      return;
+    }
 
-    win.document.write(`
-      <html>
-      <head>
-        <title>Etiqueta</title>
-        <style>
-          @page { size: 100mm 150mm; margin: 0; }
-          body {
-            margin: 0;
-            width: 100mm;
-            height: 150mm;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: Arial, sans-serif;
-          }
-          .box {
-            width: 100%;
-            height: 100%;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 10px;
-            box-sizing: border-box;
-          }
-          h1 { font-size: 20px; margin: 0; }
-          .qtd { font-size: 16px; }
-          img { max-width: 80%; }
-        </style>
-      </head>
-      <body>
-        <div class="box">
-          <h1>${p.name || ""}</h1>
-          <div class="qtd">Qtd: ${p.stock || 0}</div>
+    const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(code);
+    const barSrc = "https://barcode.tec-it.com/barcode.ashx?data=" + encodeURIComponent(code) + "&code=Code128";
 
-          <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${p.barcode || p.name}">
-          <img src="https://barcode.tec-it.com/barcode.ashx?data=${p.barcode || p.name}&code=Code128">
-        </div>
+    win.document.write(`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Etiqueta</title>
+<style>
+  @page { size: 100mm 150mm; margin: 0; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100mm;
+    height: 150mm;
+    font-family: Arial, sans-serif;
+    background: #fff;
+  }
+  .box {
+    width: 100mm;
+    height: 150mm;
+    box-sizing: border-box;
+    padding: 8mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    overflow: hidden;
+  }
+  .title {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.1;
+    word-break: break-word;
+  }
+  .qty {
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 4px 0;
+  }
+  .qr {
+    width: 42mm;
+    max-width: 100%;
+    height: auto;
+  }
+  .bar {
+    width: 74mm;
+    max-width: 100%;
+    height: auto;
+  }
+  .code {
+    font-size: 11px;
+    margin-top: 3px;
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div>
+      <div class="title">${p.name || ""}</div>
+      <div class="qty">Quantidade atual: ${qty}</div>
+    </div>
 
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => window.close(), 300);
-          }
-        </script>
-      </body>
-      </html>
-    `);
+    <div>
+      <div class="label">QR Code</div>
+      <img class="qr" src="${qrSrc}" alt="QR Code">
+    </div>
 
+    <div>
+      <div class="label">Código de barras</div>
+      <img class="bar" src="${barSrc}" alt="Código de barras">
+      <div class="code">${code}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function () {
+      setTimeout(function () {
+        window.print();
+      }, 150);
+    };
+  </script>
+</body>
+</html>`);
     win.document.close();
-  } catch(e) {
+  } catch (e) {
     console.error("Erro etiqueta:", e);
-    alert("Erro ao gerar etiqueta");
+    alert("Erro ao gerar etiqueta.");
   }
-}</div>
-        <div class="label-qty">Quantidade atual: ${unitsStock}</div>
-        <div class="label-simple-grid">
-          <div>
-            <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
-            <img src="${qrUrl(p.stock_label)}" style="max-width:100%;display:block;margin:0 auto 6px auto">
-          </div>
-          <div>
-            <div style="text-align:center;font-weight:700;margin-bottom:6px">Código de barras</div>
-            <img src="${barcodeUrl(p.stock_label)}" style="max-width:100%;display:block;margin:0 auto 6px auto">
-            <div style="font-family:monospace;word-break:break-all;text-align:center">${p.stock_label}</div>
-          </div>
-        </div>
-      </div>`;
-  }
-  byId("labelSheet").innerHTML = cards;
-  byId("printArea").classList.remove("hidden");
 }
+
+
 function fecharEtiqueta() { byId("printArea").classList.add("hidden"); }
 function findProductByScannedCode(code) { return db.products.findIndex(p => p.stock_label === code || p.barcode === code); }
 function processCode(code) {
