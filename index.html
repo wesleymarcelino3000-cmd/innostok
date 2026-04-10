@@ -566,15 +566,91 @@ async function marcarPendenteComoAtiva(item) {
   } catch (e) {}
 }
 
+
+function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("Permita pop-up para imprimir a etiqueta.");
+    return null;
+  }
+
+  win.document.write(`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Imprimir etiquetas</title>
+<style>
+  @page { size: 100mm 150mm; margin: 0; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    font-family: Arial, sans-serif;
+  }
+  .label-sheet {
+    display: block;
+  }
+  .label-card {
+    width: 100mm;
+    min-height: 150mm;
+    box-sizing: border-box;
+    border: 1px solid #111;
+    border-radius: 8px;
+    padding: 8mm;
+    background: #fff;
+    page-break-after: always;
+    break-after: page;
+    margin: 0;
+  }
+  .label-main-name {
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    text-align: center;
+    word-break: break-word;
+  }
+  .label-qty {
+    font-size: 20px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .label-simple-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  img {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto 6px auto;
+  }
+</style>
+</head>
+<body>
+  <div class="label-sheet">${htmlEtiquetas}</div>
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 150);
+    };
+  <\/script>
+</body>
+</html>`);
+  win.document.close();
+  return win;
+}
+
 async function imprimirEtiquetaPendente(i) {
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
   const pendentes = (db.pendingLabels || []).filter(x => x.status === "pendente");
   const item = pendentes[i];
   if (!item) return;
-  byId("filaLabelSheet").innerHTML = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label);
-  byId("filaPrintArea").classList.remove("hidden");
-  window.print();
-  byId("filaPrintArea").classList.add("hidden");
+
+  const card = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label);
+  const win = abrirJanelaImpressaoEtiquetas(card);
+  if (!win) return;
+
   await marcarPendenteComoAtiva(item);
 }
 
@@ -585,10 +661,11 @@ async function imprimirFilaEtiquetas() {
     alert("Não há etiquetas pendentes para imprimir.");
     return;
   }
-  byId("filaLabelSheet").innerHTML = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label)).join("");
-  byId("filaPrintArea").classList.remove("hidden");
-  window.print();
-  byId("filaPrintArea").classList.add("hidden");
+
+  const cards = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label)).join("");
+  const win = abrirJanelaImpressaoEtiquetas(cards);
+  if (!win) return;
+
   for (const item of items) {
     await marcarPendenteComoAtiva(item);
   }
