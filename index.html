@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -60,11 +60,26 @@ th{background:#f8fafc}
   @page{size:100mm 150mm;margin:4mm}
   html,body{margin:0;padding:0;background:#fff}
   body *{visibility:hidden}
-  #printArea,#printArea *{visibility:visible}
-  #printArea{position:absolute;left:0;top:0;width:100mm;margin:0;padding:0}
+  #printArea,#printArea *,
+  #filaPrintArea,#filaPrintArea *{visibility:visible}
+  #printArea,#filaPrintArea{
+    position:absolute;
+    left:0;
+    top:0;
+    width:100mm;
+    margin:0;
+    padding:0;
+    background:#fff;
+  }
   #printActions{display:none!important}
   .label-sheet{display:block}
-  .label-card{page-break-after:always;margin:0!important}
+  .label-card{
+    width:100mm !important;
+    min-height:150mm !important;
+    page-break-after:always;
+    break-after:page;
+    margin:0 !important;
+  }
 }
 @media(max-width:1100px){.layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}.main{padding:14px}}
 
@@ -110,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub"></div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -128,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+        <h1 style="margin:0 0 6px">Inno Stok</h1>
+        <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 

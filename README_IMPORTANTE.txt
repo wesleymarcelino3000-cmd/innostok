@@ -72,3 +72,7 @@ Correção adicional:
 - histórico agora grava mesmo se a coluna details não existir
 - fila de etiquetas usa etiqueta ativa e etiqueta pendente corretamente
 - baixa por scanner/manual envia restante para fila
+
+
+Correção:
+- impressão da etiqueta restante da fila agora mostra o conteúdo em vez de página em branco.
