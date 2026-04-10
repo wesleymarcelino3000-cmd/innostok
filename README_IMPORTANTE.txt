@@ -68,7 +68,7 @@ Atualização:
 - botões agora somem quando o usuário não tem acesso, seguindo as permissões já definidas por nível.
 
 
-Correção:
-- ao gerar etiqueta, ela vira a etiqueta ativa do produto
-- ao dar baixa pelo celular ou baixa manual, o restante vai para a fila de etiquetas
-- ao imprimir a fila, a etiqueta pendente vira a nova etiqueta ativa
+Correção adicional:
+- histórico agora grava mesmo se a coluna details não existir
+- fila de etiquetas usa etiqueta ativa e etiqueta pendente corretamente
+- baixa por scanner/manual envia restante para fila

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -110,8 +110,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub"></div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -128,8 +128,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Inno Stok</h1>
-        <div style="color:#6b7280">InnoLife</div>
+        <h1 style="margin:0 0 6px">Painel de gestão</h1>
+        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -219,8 +219,7 @@ th{background:#f8fafc}
         <div class="wrap">
           <table>
             <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
-            <tbody id="listaEstoqueCompleto"></tbody>
-          <tbody id="listaProdutos"></tbody></table>
+            <tbody id="listaEstoqueCompleto"></tbody></table>
         </div>
       </div>
 
@@ -363,6 +362,8 @@ function showSection(id) {
   const target = byId(id);
 
   if (id === "estoqueView") renderEstoqueCompleto();
+  if (id === "historicoView") renderHistorico();
+  if (id === "filaEtiquetas") renderFilaEtiquetas();
   if (id === "users") {
     applyUserPermissions();
     renderUsuarios();
@@ -394,6 +395,7 @@ function showSection(id) {
 }
 
 
+
 function formatDateTime(v) {
   try {
     return v ? new Date(v).toLocaleString('pt-BR') : "";
@@ -409,6 +411,14 @@ async function loadPendingLabels() {
   } catch (e) {
     db.pendingLabels = [];
   }
+}
+
+function getActiveLabelRecord(productId) {
+  return (db.pendingLabels || []).find(x => Number(x.product_id) === Number(productId) && x.status === "ativa") || null;
+}
+
+function getPendingLabelRecord(productId) {
+  return (db.pendingLabels || []).find(x => Number(x.product_id) === Number(productId) && x.status === "pendente") || null;
 }
 
 function renderFilaEtiquetas() {
@@ -449,25 +459,19 @@ function montarCardEtiqueta(nome, quantidade, stockLabel) {
     </div>`;
 }
 
-
-function getActiveLabelRecord(productId) {
-  return (db.pendingLabels || []).find(x => Number(x.product_id) === Number(productId) && x.status === "ativa") || null;
-}
-
-function getPendingLabelRecord(productId) {
-  return (db.pendingLabels || []).find(x => Number(x.product_id) === Number(productId) && x.status === "pendente") || null;
-}
-
 async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
   try {
-    const active = getActiveLabelRecord(productId);
-    if (active) {
+    const existingActive = getActiveLabelRecord(productId);
+    const pending = getPendingLabelRecord(productId);
+    if (existingActive) {
       await sb.from('pending_labels').update({
         product_name: productName || "",
         quantity_remaining: Number(qty || 0),
-        status: 'ativa',
-        stock_label: stockLabel || ""
-      }).eq('id', active.id);
+        stock_label: stockLabel || "",
+        status: 'ativa'
+      }).eq('id', existingActive.id);
+    } else if (pending && Number(pending.quantity_remaining) === Number(qty || 0)) {
+      await sb.from('pending_labels').update({ status: 'ativa', stock_label: stockLabel || "" }).eq('id', pending.id);
     } else {
       await sb.from('pending_labels').insert({
         product_id: productId,
@@ -479,53 +483,35 @@ async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
     }
     await loadPendingLabels();
     renderFilaEtiquetas();
-  } catch(e) {}
+  } catch (e) {}
 }
 
 async function enviarRestanteParaFila(productId, productName, remaining, stockLabel) {
   try {
     const active = getActiveLabelRecord(productId);
     if (active) {
-      await sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', active.id);
     }
-
     const pend = getPendingLabelRecord(productId);
     if (pend) {
       await sb.from('pending_labels').update({
         product_name: productName || "",
         quantity_remaining: Number(remaining || 0),
-        status: 'pendente',
-        stock_label: stockLabel || ""
+        stock_label: stockLabel || "",
+        status: 'pendente'
       }).eq('id', pend.id);
     } else {
       await sb.from('pending_labels').insert({
         product_id: productId,
         product_name: productName || "",
         quantity_remaining: Number(remaining || 0),
-        status: 'pendente',
-        stock_label: stockLabel || ""
+        stock_label: stockLabel || "",
+        status: 'pendente'
       });
     }
     await loadPendingLabels();
     renderFilaEtiquetas();
-  } catch(e) {}
-}
-
-async function marcarPendenteComoAtiva(item) {
-  try {
-    if (!item) return;
-    const active = getActiveLabelRecord(item.product_id);
-    if (active) {
-      await sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
-    }
-    await sb.from('pending_labels').update({ status: 'ativa' }).eq('id', item.id);
-    await loadPendingLabels();
-    renderFilaEtiquetas();
-  } catch(e) {}
-}
-
-async function adicionarEtiquetaPendente(productId, productName, quantityRemaining, stockLabel) {
-  await enviarRestanteParaFila(productId, productName, quantityRemaining, stockLabel);
+  } catch (e) {}
 }
 
 async function atualizarFilaEtiquetas() {
@@ -534,7 +520,8 @@ async function atualizarFilaEtiquetas() {
 }
 
 async function removerEtiquetaPendente(i) {
-  const item = db.pendingLabels[i];
+  const pendentes = (db.pendingLabels || []).filter(x => x.status === "pendente");
+  const item = pendentes[i];
   if (!item) return;
   if (!confirm("Deseja excluir esta etiqueta pendente?")) return;
   await sb.from('pending_labels').delete().eq('id', item.id);
@@ -545,9 +532,23 @@ async function removerEtiquetaPendente(i) {
 async function limparFilaEtiquetas() {
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
   if (!confirm("Deseja limpar toda a fila de etiquetas pendentes?")) return;
-  await sb.from('pending_labels').delete().gt('id', 0);
+  const pendentes = (db.pendingLabels || []).filter(x => x.status === "pendente").map(x => x.id);
+  if (pendentes.length) await sb.from('pending_labels').delete().in('id', pendentes);
   await loadPendingLabels();
   renderFilaEtiquetas();
+}
+
+async function marcarPendenteComoAtiva(item) {
+  if (!item) return;
+  try {
+    const active = getActiveLabelRecord(item.product_id);
+    if (active && active.id !== item.id) {
+      await sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
+    }
+    await sb.from('pending_labels').update({ status: 'ativa' }).eq('id', item.id);
+    await loadPendingLabels();
+    renderFilaEtiquetas();
+  } catch (e) {}
 }
 
 async function imprimirEtiquetaPendente(i) {
@@ -578,7 +579,64 @@ async function imprimirFilaEtiquetas() {
   }
 }
 
+async function registrarHistorico(action, source, productName, quantity, details) {
+  try {
+    let res = await sb.from('movements').insert({
+      product_id: null,
+      product_name: productName || "",
+      type: action || "",
+      quantity: Number(quantity || 0),
+      source: source || "",
+      username: currentUser()?.username || "",
+      details: details || ""
+    });
+    if (res && res.error) {
+      await sb.from('movements').insert({
+        product_id: null,
+        product_name: productName || "",
+        type: action || "",
+        quantity: Number(quantity || 0),
+        source: source || "",
+        username: currentUser()?.username || ""
+      });
+    }
+  } catch (e) {}
+}
+
+async function loadHistorico() {
+  try {
+    const res = await sb.from('movements').select('*').order('id', { ascending: false });
+    db.movements = res.data || [];
+    db.filteredMovements = [...db.movements];
+  } catch (e) {
+    db.movements = [];
+    db.filteredMovements = [];
+  }
+}
+
+function renderHistorico() {
+  const tbody = byId("listaHistorico");
+  if (!tbody) return;
+  const items = Array.isArray(db.filteredMovements) ? db.filteredMovements : (db.movements || []);
+  const rows = items.map(m => {
+    const data = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : "";
+    return `
+      <tr>
+        <td>${data}</td>
+        <td>${m.username || ""}</td>
+        <td>${m.type || ""}</td>
+        <td>${m.source || ""}</td>
+        <td>${m.product_name || ""}</td>
+        <td>${m.quantity ?? ""}</td>
+        <td>${m.details || ""}</td>
+      </tr>
+    `;
+  }).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum histórico encontrado.</td></tr>`;
+}
+
 async function bootstrap() {
+
   loadSession();
   const ok = await testConnection();
   if (!ok) return;
@@ -896,8 +954,15 @@ async function registrarManual() {
   if (idx === "" || qtdm <= 0) return;
   const p = db.products[idx];
   const newStock = tipo === "saida" ? Math.max(0, Number(p.stock) - qtdm) : Number(p.stock) + qtdm;
+
   await sb.from('products').update({ stock:newStock }).eq('id', p.id);
-  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '', details:'Movimentação manual' });
+  {
+    let mv = await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '', details:'Movimentação manual' });
+    if (mv && mv.error) {
+      await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '' });
+    }
+  }
+  await registrarHistorico(tipo === 'saida' ? 'baixa_manual' : 'entrada_manual', 'manual', p.name, qtdm, 'Movimentação manual');
   await loadAll();
   render();
 
@@ -927,9 +992,7 @@ function gerarEtiqueta(i) {
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
-    const qty = Math.max(1, Number(byId("labelUnitsStock")?.value || p.stock || 1));
-
-    registrarEtiquetaAtiva(p.id, p.name, qty, code);
+    const qty = Number(p.stock || 0);
 
     const win = window.open("", "_blank");
     if (!win) {
@@ -967,12 +1030,37 @@ function gerarEtiqueta(i) {
     text-align: center;
     overflow: hidden;
   }
-  .title { font-size: 18px; font-weight: 800; line-height: 1.1; word-break: break-word; }
-  .qty { font-size: 15px; font-weight: 700; margin-top: 4px; }
-  .label { font-size: 14px; font-weight: 700; margin: 4px 0; }
-  .qr { width: 42mm; max-width: 100%; height: auto; }
-  .bar { width: 74mm; max-width: 100%; height: auto; }
-  .code { font-size: 11px; margin-top: 3px; word-break: break-all; }
+  .title {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.1;
+    word-break: break-word;
+  }
+  .qty {
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .label {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 4px 0;
+  }
+  .qr {
+    width: 42mm;
+    max-width: 100%;
+    height: auto;
+  }
+  .bar {
+    width: 74mm;
+    max-width: 100%;
+    height: auto;
+  }
+  .code {
+    font-size: 11px;
+    margin-top: 3px;
+    word-break: break-all;
+  }
 </style>
 </head>
 <body>
@@ -981,19 +1069,24 @@ function gerarEtiqueta(i) {
       <div class="title">${p.name || ""}</div>
       <div class="qty">Quantidade atual: ${qty}</div>
     </div>
+
     <div>
       <div class="label">QR Code</div>
       <img class="qr" src="${qrSrc}" alt="QR Code">
     </div>
+
     <div>
       <div class="label">Código de barras</div>
       <img class="bar" src="${barSrc}" alt="Código de barras">
       <div class="code">${code}</div>
     </div>
   </div>
+
   <script>
     window.onload = function () {
-      setTimeout(function () { window.print(); }, 150);
+      setTimeout(function () {
+        window.print();
+      }, 150);
     };
   <\/script>
 </body>
@@ -1095,8 +1188,15 @@ async function darBaixaScanner() {
   const p = db.products[ultimoProdutoIndex];
   if (Number(p.stock) < qtd) return alert("Estoque insuficiente.");
   const newStock = Number(p.stock) - qtd;
+
   await sb.from('products').update({ stock:newStock }).eq('id', p.id);
-  await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '', details:'Baixa via scanner' });
+  {
+    let mv = await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '', details:'Baixa via scanner' });
+    if (mv && mv.error) {
+      await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '' });
+    }
+  }
+  await registrarHistorico('baixa_scanner', 'scanner', p.name, qtd, 'Baixa via scanner');
   await loadAll();
   render();
   playBeep();
@@ -1142,18 +1242,19 @@ async function editarProduto(i) {
   render();
 }
 function render() {
-  byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
-  byId("s1").innerText = db.products.length;
-  byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
-  byId("s3").innerText = db.products.filter(p => Number(p.stock || 0) <= 0).length;
-  preencherSelectProduto();
-  preencherSelectEntradaProduto();
-  renderUsuarios();
-  renderEtiquetas();
-  renderEstoqueCompleto();
-  renderHistorico();
-  renderEtiquetas();
-  renderFilaEtiquetas();
+  if (byId("lista")) {
+    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
+  }
+  if (byId("s1")) byId("s1").innerText = db.products.length;
+  if (byId("s2")) byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
+  if (byId("s3")) byId("s3").innerText = db.products.filter(p => Number(p.stock || 0) <= 0).length;
+  try { preencherSelectProduto(); } catch(e) {}
+  try { preencherSelectEntradaProduto(); } catch(e) {}
+  try { renderUsuarios(); } catch(e) {}
+  try { renderEtiquetas(); } catch(e) {}
+  try { renderEstoqueCompleto(); } catch(e) {}
+  try { renderHistorico(); } catch(e) {}
+  try { renderFilaEtiquetas(); } catch(e) {}
 }
 
 async function exportarPlanilha() {
@@ -1446,7 +1547,7 @@ async function exportarHistoricoExcel() {
 
 async function registrarHistorico(action, source, productName, quantity, details) {
   try {
-    await sb.from('movements').insert({
+    let res = await sb.from('movements').insert({
       product_id: null,
       product_name: productName || "",
       type: action || "",
@@ -1455,6 +1556,16 @@ async function registrarHistorico(action, source, productName, quantity, details
       username: currentUser()?.username || "",
       details: details || ""
     });
+    if (res && res.error) {
+      await sb.from('movements').insert({
+        product_id: null,
+        product_name: productName || "",
+        type: action || "",
+        quantity: Number(quantity || 0),
+        source: source || "",
+        username: currentUser()?.username || ""
+      });
+    }
   } catch (e) {}
 }
 
@@ -1510,21 +1621,6 @@ bootstrap();
 </html>
 
 
-<script>
-function renderProdutos() {
-  const lista = document.getElementById("listaProdutos");
-  if (!lista || !window.db || !db.produtos) return;
-
-  lista.innerHTML = db.produtos.map((p, i) => `
-    <tr>
-      <td>${p.nome || ""}</td>
-      <td>${p.codigo || ""}</td>
-      <td>${p.quantidade || 0}</td>
-      <td>${p.preco || 0}</td>
-    </tr>
-  `).join("");
-}
-</script>
 
 
 <script>
