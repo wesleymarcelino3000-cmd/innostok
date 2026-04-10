@@ -66,3 +66,9 @@ Atualização:
 
 Atualização:
 - botões agora somem quando o usuário não tem acesso, seguindo as permissões já definidas por nível.
+
+
+Correção:
+- ao gerar etiqueta, ela vira a etiqueta ativa do produto
+- ao dar baixa pelo celular ou baixa manual, o restante vai para a fila de etiquetas
+- ao imprimir a fila, a etiqueta pendente vira a nova etiqueta ativa

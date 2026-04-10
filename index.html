@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -110,8 +110,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub"></div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -128,8 +128,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+        <h1 style="margin:0 0 6px">Inno Stok</h1>
+        <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -414,7 +414,8 @@ async function loadPendingLabels() {
 function renderFilaEtiquetas() {
   const tbody = byId("listaFilaEtiquetas");
   if (!tbody) return;
-  const rows = (db.pendingLabels || []).map((item, i) => `
+  const pendentes = (db.pendingLabels || []).filter(item => item.status === "pendente");
+  const rows = pendentes.map((item, i) => `
     <tr>
       <td>${formatDateTime(item.created_at)}</td>
       <td>${item.product_name || ""}</td>
@@ -448,18 +449,83 @@ function montarCardEtiqueta(nome, quantidade, stockLabel) {
     </div>`;
 }
 
-async function adicionarEtiquetaPendente(productId, productName, quantityRemaining, stockLabel) {
+
+function getActiveLabelRecord(productId) {
+  return (db.pendingLabels || []).find(x => Number(x.product_id) === Number(productId) && x.status === "ativa") || null;
+}
+
+function getPendingLabelRecord(productId) {
+  return (db.pendingLabels || []).find(x => Number(x.product_id) === Number(productId) && x.status === "pendente") || null;
+}
+
+async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
   try {
-    await sb.from('pending_labels').insert({
-      product_id: productId,
-      product_name: productName || "",
-      quantity_remaining: Number(quantityRemaining || 0),
-      status: 'pendente',
-      stock_label: stockLabel || ""
-    });
+    const active = getActiveLabelRecord(productId);
+    if (active) {
+      await sb.from('pending_labels').update({
+        product_name: productName || "",
+        quantity_remaining: Number(qty || 0),
+        status: 'ativa',
+        stock_label: stockLabel || ""
+      }).eq('id', active.id);
+    } else {
+      await sb.from('pending_labels').insert({
+        product_id: productId,
+        product_name: productName || "",
+        quantity_remaining: Number(qty || 0),
+        status: 'ativa',
+        stock_label: stockLabel || ""
+      });
+    }
     await loadPendingLabels();
     renderFilaEtiquetas();
-  } catch (e) {}
+  } catch(e) {}
+}
+
+async function enviarRestanteParaFila(productId, productName, remaining, stockLabel) {
+  try {
+    const active = getActiveLabelRecord(productId);
+    if (active) {
+      await sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
+    }
+
+    const pend = getPendingLabelRecord(productId);
+    if (pend) {
+      await sb.from('pending_labels').update({
+        product_name: productName || "",
+        quantity_remaining: Number(remaining || 0),
+        status: 'pendente',
+        stock_label: stockLabel || ""
+      }).eq('id', pend.id);
+    } else {
+      await sb.from('pending_labels').insert({
+        product_id: productId,
+        product_name: productName || "",
+        quantity_remaining: Number(remaining || 0),
+        status: 'pendente',
+        stock_label: stockLabel || ""
+      });
+    }
+    await loadPendingLabels();
+    renderFilaEtiquetas();
+  } catch(e) {}
+}
+
+async function marcarPendenteComoAtiva(item) {
+  try {
+    if (!item) return;
+    const active = getActiveLabelRecord(item.product_id);
+    if (active) {
+      await sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
+    }
+    await sb.from('pending_labels').update({ status: 'ativa' }).eq('id', item.id);
+    await loadPendingLabels();
+    renderFilaEtiquetas();
+  } catch(e) {}
+}
+
+async function adicionarEtiquetaPendente(productId, productName, quantityRemaining, stockLabel) {
+  await enviarRestanteParaFila(productId, productName, quantityRemaining, stockLabel);
 }
 
 async function atualizarFilaEtiquetas() {
@@ -486,20 +552,19 @@ async function limparFilaEtiquetas() {
 
 async function imprimirEtiquetaPendente(i) {
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
-  const item = db.pendingLabels[i];
+  const pendentes = (db.pendingLabels || []).filter(x => x.status === "pendente");
+  const item = pendentes[i];
   if (!item) return;
   byId("filaLabelSheet").innerHTML = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label);
   byId("filaPrintArea").classList.remove("hidden");
   window.print();
   byId("filaPrintArea").classList.add("hidden");
-  await sb.from('pending_labels').update({ status: 'impresso' }).eq('id', item.id);
-  await loadPendingLabels();
-  renderFilaEtiquetas();
+  await marcarPendenteComoAtiva(item);
 }
 
 async function imprimirFilaEtiquetas() {
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
-  const items = (db.pendingLabels || []).filter(x => x.status !== 'impresso');
+  const items = (db.pendingLabels || []).filter(x => x.status === 'pendente');
   if (!items.length) {
     alert("Não há etiquetas pendentes para imprimir.");
     return;
@@ -508,12 +573,9 @@ async function imprimirFilaEtiquetas() {
   byId("filaPrintArea").classList.remove("hidden");
   window.print();
   byId("filaPrintArea").classList.add("hidden");
-  const ids = items.map(x => x.id);
-  if (ids.length) {
-    await sb.from('pending_labels').update({ status: 'impresso' }).in('id', ids);
+  for (const item of items) {
+    await marcarPendenteComoAtiva(item);
   }
-  await loadPendingLabels();
-  renderFilaEtiquetas();
 }
 
 async function bootstrap() {
@@ -839,15 +901,18 @@ async function registrarManual() {
   await loadAll();
   render();
 
-  const etiquetaAtual = Number(byId("labelUnitsStock")?.value || 0);
-  if (tipo === 'saida' && etiquetaAtual > 0 && qtdm < etiquetaAtual) {
-    const restante = etiquetaAtual - qtdm;
-    await adicionarEtiquetaPendente(p.id, p.name, restante, p.stock_label);
-    if (byId("labelUnitsStock")) {
-      byId("labelUnitsStock").value = restante;
-      delete byId("labelUnitsStock").dataset.userEdited;
+  const etiquetaAtiva = getActiveLabelRecord(p.id);
+  const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
+  if (tipo === 'saida' && etiquetaAtual > 0) {
+    if (qtdm < etiquetaAtual) {
+      const restante = etiquetaAtual - qtdm;
+      await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
+      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+    } else {
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await loadPendingLabels();
+      renderFilaEtiquetas();
     }
-    alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
   }
 }
 function renderEtiquetas() {
@@ -862,7 +927,9 @@ function gerarEtiqueta(i) {
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
-    const qty = Number(p.stock || 0);
+    const qty = Math.max(1, Number(byId("labelUnitsStock")?.value || p.stock || 1));
+
+    registrarEtiquetaAtiva(p.id, p.name, qty, code);
 
     const win = window.open("", "_blank");
     if (!win) {
@@ -900,37 +967,12 @@ function gerarEtiqueta(i) {
     text-align: center;
     overflow: hidden;
   }
-  .title {
-    font-size: 18px;
-    font-weight: 800;
-    line-height: 1.1;
-    word-break: break-word;
-  }
-  .qty {
-    font-size: 15px;
-    font-weight: 700;
-    margin-top: 4px;
-  }
-  .label {
-    font-size: 14px;
-    font-weight: 700;
-    margin: 4px 0;
-  }
-  .qr {
-    width: 42mm;
-    max-width: 100%;
-    height: auto;
-  }
-  .bar {
-    width: 74mm;
-    max-width: 100%;
-    height: auto;
-  }
-  .code {
-    font-size: 11px;
-    margin-top: 3px;
-    word-break: break-all;
-  }
+  .title { font-size: 18px; font-weight: 800; line-height: 1.1; word-break: break-word; }
+  .qty { font-size: 15px; font-weight: 700; margin-top: 4px; }
+  .label { font-size: 14px; font-weight: 700; margin: 4px 0; }
+  .qr { width: 42mm; max-width: 100%; height: auto; }
+  .bar { width: 74mm; max-width: 100%; height: auto; }
+  .code { font-size: 11px; margin-top: 3px; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -939,24 +981,19 @@ function gerarEtiqueta(i) {
       <div class="title">${p.name || ""}</div>
       <div class="qty">Quantidade atual: ${qty}</div>
     </div>
-
     <div>
       <div class="label">QR Code</div>
       <img class="qr" src="${qrSrc}" alt="QR Code">
     </div>
-
     <div>
       <div class="label">Código de barras</div>
       <img class="bar" src="${barSrc}" alt="Código de barras">
       <div class="code">${code}</div>
     </div>
   </div>
-
   <script>
     window.onload = function () {
-      setTimeout(function () {
-        window.print();
-      }, 150);
+      setTimeout(function () { window.print(); }, 150);
     };
   <\/script>
 </body>
@@ -1065,15 +1102,18 @@ async function darBaixaScanner() {
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
 
-  const etiquetaAtual = Number(byId("labelUnitsStock")?.value || 0);
-  if (etiquetaAtual > 0 && qtd < etiquetaAtual) {
-    const restante = etiquetaAtual - qtd;
-    await adicionarEtiquetaPendente(p.id, p.name, restante, p.stock_label);
-    if (byId("labelUnitsStock")) {
-      byId("labelUnitsStock").value = restante;
-      delete byId("labelUnitsStock").dataset.userEdited;
+  const etiquetaAtiva = getActiveLabelRecord(p.id);
+  const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
+  if (etiquetaAtual > 0) {
+    if (qtd < etiquetaAtual) {
+      const restante = etiquetaAtual - qtd;
+      await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
+      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+    } else {
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await loadPendingLabels();
+      renderFilaEtiquetas();
     }
-    alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
   }
 }
 async function excluirProduto(i) {
