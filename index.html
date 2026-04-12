@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -125,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub">InnoLife</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -143,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+        <h1 style="margin:0 0 6px">Inno Stok</h1>
+        <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -740,6 +740,7 @@ async function bootstrap() {
     byId("app").classList.remove("hidden");
     applyUserPermissions();
     render();
+    verificarEstoqueBaixoAdmin();
     applyUserPermissions();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
@@ -812,6 +813,7 @@ async function login() {
       byId("app").classList.remove("hidden");
       applyUserPermissions();
       render();
+      verificarEstoqueBaixoAdmin();
       applyUserPermissions();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
@@ -917,6 +919,7 @@ async function salvarConta() {
   await loadAll();
   applyUserPermissions();
   render();
+  verificarEstoqueBaixoAdmin();
   alert("Conta salva");
 }
 async function criarUsuario() {
@@ -1355,6 +1358,19 @@ async function editarProduto(i) {
   await loadAll();
   render();
 }
+function verificarEstoqueBaixoAdmin() {
+  if (!isAdmin()) return;
+  const baixos = (db.products || []).filter(p => Number(p.stock || 0) <= Number(p.min || 0) && Number(p.min || 0) > 0);
+  if (!baixos.length) return;
+
+  let msg = "⚠️ Estoque baixo:\n\n";
+  baixos.forEach(p => {
+    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + Number(p.min || 0) + ")\n";
+  });
+
+  setTimeout(() => alert(msg), 500);
+}
+
 function render() {
   if (byId("lista")) {
     byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
