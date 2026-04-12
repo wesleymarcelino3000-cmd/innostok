@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -125,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub">InnoLife</div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -143,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Inno Stok</h1>
-        <div style="color:#6b7280">InnoLife</div>
+        <h1 style="margin:0 0 6px">Painel de gestão</h1>
+        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -739,7 +739,7 @@ async function bootstrap() {
     byId("loginPage").classList.add("hidden");
     byId("app").classList.remove("hidden");
     applyUserPermissions();
-    render();
+    render(); verificarEstoqueBaixoAdmin();
     applyUserPermissions();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
@@ -811,7 +811,7 @@ async function login() {
       if (loginPage) loginPage.classList.add("hidden");
       byId("app").classList.remove("hidden");
       applyUserPermissions();
-      render();
+      render(); verificarEstoqueBaixoAdmin();
       applyUserPermissions();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
@@ -916,7 +916,7 @@ async function salvarConta() {
   saveSession();
   await loadAll();
   applyUserPermissions();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
   alert("Conta salva");
 }
 async function criarUsuario() {
@@ -937,7 +937,7 @@ async function criarUsuario() {
   byId("uSenha").value = "";
   byId("uRole").value = "operador";
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 }
 async function editarUsuario(i) {
   if (!isAdmin()) return alert("Somente admin pode editar usuários.");
@@ -953,7 +953,7 @@ async function editarUsuario(i) {
   }).eq('id', u.id);
   await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador" || role === "conferente") ? role : u.role));
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 }
 async function removerUsuario(i) {
   if (!isAdmin()) return;
@@ -962,7 +962,7 @@ async function removerUsuario(i) {
   await sb.from('app_users').delete().eq('id', u.id);
   await registrarHistorico('excluir_usuario', 'usuarios', u.username, 0, 'Usuário removido');
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 }
 function renderUsuarios() {
   const tbody = byId("listaUsuarios");
@@ -993,7 +993,7 @@ async function add() {
   await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
   ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 }
 
 function preencherSelectEntradaProduto() {
@@ -1029,7 +1029,7 @@ async function darEntradaProduto() {
   if (byId("entradaQtd")) byId("entradaQtd").value = "1";
   if (byId("entradaObs")) byId("entradaObs").value = "";
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
   alert("Entrada registrada com sucesso.");
 }
 
@@ -1057,7 +1057,7 @@ async function registrarManual() {
   }
   await registrarHistorico(tipo === 'saida' ? 'baixa_manual' : 'entrada_manual', 'manual', p.name, qtdm, 'Movimentação manual');
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 
   const etiquetaAtiva = getActiveLabelRecord(p.id);
   const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
@@ -1294,7 +1294,7 @@ async function darBaixaScanner() {
   }
   await registrarHistorico('baixa_scanner', 'scanner', p.name, qtd, 'Baixa via scanner');
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
 
@@ -1318,7 +1318,7 @@ async function excluirProduto(i) {
   await registrarHistorico('excluir_produto', 'produtos', db.products[i].name, db.products[i].stock, 'Produto removido');
   await sb.from('products').delete().eq('id', db.products[i].id);
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 }
 async function editarProduto(i) {
   if (isOperador()) return alert("Operador não pode editar produto.");
@@ -1335,8 +1335,21 @@ async function editarProduto(i) {
   }).eq('id', p.id);
   await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
   await loadAll();
-  render();
+  render(); verificarEstoqueBaixoAdmin();
 }
+
+function verificarEstoqueBaixoAdmin(){
+  if(!isAdmin()) return;
+  const baixos = (db.products || []).filter(p => Number(p.stock) <= Number(p.min || 0));
+  if(baixos.length){
+    let msg = "⚠️ Estoque baixo:\n\n";
+    baixos.forEach(p=>{
+      msg += p.name + " (Atual: " + p.stock + " | Mín: " + (p.min || 0) + ")\n";
+    });
+    setTimeout(()=>alert(msg), 500);
+  }
+}
+
 function render() {
   if (byId("lista")) {
     byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
