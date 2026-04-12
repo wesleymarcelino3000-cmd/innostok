@@ -1424,15 +1424,14 @@ async function editarMinimo(i){
 
 function verificarEstoqueBaixoAdmin() {
   if (!isAdmin()) return;
-  const baixos = (db.products || []).filter(p => Number(p.stock || 0) <= getMinimoProduto(p) && getMinimoProduto(p) > 0);
+  const baixos = (db.products || []).filter(
+    p => Number(p.stock || 0) <= getMinimoProduto(p) && getMinimoProduto(p) > 0
+  );
   if (!baixos.length) return;
 
-  let msg = "⚠️ Estoque baixo:
-
-";
+  let msg = "⚠️ Estoque baixo:\n\n";
   baixos.forEach(p => {
-    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + getMinimoProduto(p) + ")
-";
+    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + getMinimoProduto(p) + ")\n";
   });
 
   setTimeout(() => alert(msg), 500);
