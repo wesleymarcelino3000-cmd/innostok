@@ -140,6 +140,7 @@ th{background:#f8fafc}
       <button id="btnVerEstoque" onclick="showSection('estoqueView'); return false;">Ver estoque</button>
       <button id="btnExportarExcel" onclick="exportarPlanilha()">Exportar Excel</button>
       <button id="historyBtn" class="hidden" onclick="showSection('historicoView'); return false;">Histórico</button>
+      <button id="btnGraficos" class="hidden" onclick="showSection('graficosView'); return false;">Gráficos</button>
       <button onclick="showSection('etiquetas'); return false;">Etiquetas de estoque</button>
       <button onclick="showSection('filaEtiquetas'); return false;">Fila de etiquetas</button>
       <button id="btnScanner" onclick="showSection('scannerMobile'); return false;">Scanner no celular</button>
@@ -271,6 +272,39 @@ th{background:#f8fafc}
             </thead>
             <tbody id="listaHistorico"></tbody>
           <tbody id="listaProdutos"></tbody></table>
+        </div>
+      </div>
+
+      
+      <div id="graficosView" class="card hidden">
+        <h3>Gráficos do sistema</h3>
+        <div class="warnbox hidden" id="graficosBlocked">Somente admin pode ver os gráficos.</div>
+
+        <div id="graficosAdminArea">
+          <div class="form-row" style="margin-bottom:12px">
+            <div><label>Data inicial</label><input class="app-input" id="grafDataInicio" type="date" onchange="renderGraficosSistema()"></div>
+            <div><label>Data final</label><input class="app-input" id="grafDataFim" type="date" onchange="renderGraficosSistema()"></div>
+          </div>
+
+          <div class="form-row" style="margin-bottom:12px">
+            <div><label>Produto</label><select class="app-input" id="grafProduto" onchange="renderGraficosSistema()"></select></div>
+            <div><label>Visualização</label><select class="app-input" id="grafTipo" onchange="renderGraficosSistema()"><option value="dia">Por dia</option><option value="semana">Por semana</option><option value="mes">Por mês</option></select></div>
+          </div>
+
+          <div class="form-row" style="margin-bottom:12px">
+            <div class="card" style="box-shadow:none;border:1px solid #e5e7eb;margin:0">
+              <div><b>Total de entradas:</b> <span id="grafTotalEntradas">0</span></div>
+              <div style="margin-top:6px"><b>Total de saídas:</b> <span id="grafTotalSaidas">0</span></div>
+            </div>
+            <div class="card" style="box-shadow:none;border:1px solid #e5e7eb;margin:0">
+              <div><b>Saldo:</b> <span id="grafSaldo">0</span></div>
+              <div style="margin-top:6px"><b>Produto selecionado:</b> <span id="grafProdutoSelecionado">Todos</span></div>
+            </div>
+          </div>
+
+          <div class="card" style="box-shadow:none;border:1px solid #e5e7eb">
+            <canvas id="graficoSistemaCanvas" height="120"></canvas>
+          </div>
         </div>
       </div>
 
@@ -409,8 +443,10 @@ let scannerRunning = false;
 let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
+let graficoSistemaChart = null;
 let currentProductHistoryId = null;
 let productHistoryChart = null;
+let graficoSistemaChart = null;
 
 
 function byId(id) { return document.getElementById(id); }
@@ -429,7 +465,7 @@ function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code1
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 
 function hideAllSections() {
-  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -447,6 +483,7 @@ function showSection(id) {
   if (id === "historicoView") renderHistorico();
   if (id === "filaEtiquetas") renderFilaEtiquetas();
   if (id === "produtoHistoricoView") renderHistoricoProduto();
+  if (id === "graficosView") { aplicarPermissaoGraficos(); preencherSelectGraficoProdutos(); renderGraficosSistema(); }
   if (id === "users") {
     applyUserPermissions();
     renderUsuarios();
@@ -933,6 +970,7 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
     setVisible("historyBtn", true);
+    setVisible("btnGraficos", true);
   } else if (conferente) {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -944,6 +982,7 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
     setVisible("historyBtn", false);
+    setVisible("btnGraficos", false);
   } else if (operador) {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -955,6 +994,8 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
     setVisible("historyBtn", false);
+    setVisible("btnGraficos", false);
+    setVisible("btnGraficos", false);
   } else {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -966,6 +1007,8 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
     setVisible("historyBtn", false);
+    setVisible("btnGraficos", false);
+    setVisible("btnGraficos", false);
   }
 
   if (admin && u) {
@@ -1396,19 +1439,36 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-async function editarProduto(i) {
+async async function editarProduto(i) {
   if (isOperador()) return alert("Operador não pode editar produto.");
+
   const p = db.products[i];
+
   const novoNome = prompt("Editar nome:", p.name);
   const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
+  const novaCategoria = prompt("Editar categoria:", p.category || "");
   const novaQtd = prompt("Editar quantidade:", p.stock);
   const novoPreco = prompt("Editar preço:", p.price);
+
   await sb.from('products').update({
     name: novoNome ?? p.name,
     barcode: novoCodigoBarras ?? p.barcode,
+    category: novaCategoria ?? p.category,
     stock: Number(novaQtd ?? p.stock),
     price: Number(novoPreco ?? p.price)
   }).eq('id', p.id);
+
+  await registrarHistorico(
+    'editar_produto',
+    'produtos',
+    novoNome ?? p.name,
+    Number(novaQtd ?? p.stock),
+    'Categoria: ' + (novaCategoria ?? p.category)
+  );
+
+  await loadAll();
+  render();
+}).eq('id', p.id);
   await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
   await loadAll();
   render();
@@ -1427,6 +1487,8 @@ function render() {
   try { renderEstoqueCompleto(); } catch(e) {}
   try { renderHistorico(); } catch(e) {}
   try { renderFilaEtiquetas(); } catch(e) {}
+  try { preencherSelectGraficoProdutos(); } catch(e) {}
+  try { aplicarPermissaoGraficos(); } catch(e) {}
 }
 
 async function exportarPlanilha() {
@@ -1944,6 +2006,107 @@ function renderHistoricoProduto() {
   tbody.innerHTML = rows || `<tr><td colspan="6">Nenhum movimento encontrado para este produto no período.</td></tr>`;
 }
 
+
+
+function preencherSelectGraficoProdutos() {
+  const sel = byId("grafProduto");
+  if (!sel) return;
+  const atual = sel.value || "";
+  sel.innerHTML = '<option value="">Todos os produtos</option>' + (db.products || []).map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+  if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+}
+
+function chaveAgrupamentoData(data, tipo) {
+  const d = new Date(data);
+  if (isNaN(d.getTime())) return "Sem data";
+  if (tipo === "mes") return d.toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' });
+  if (tipo === "semana") {
+    const primeiroDiaAno = new Date(d.getFullYear(), 0, 1);
+    const dias = Math.floor((d - primeiroDiaAno) / 86400000);
+    const semana = Math.ceil((dias + primeiroDiaAno.getDay() + 1) / 7);
+    return `Sem ${String(semana).padStart(2,'0')}/${d.getFullYear()}`;
+  }
+  return d.toLocaleDateString('pt-BR');
+}
+
+function aplicarPermissaoGraficos() {
+  const blocked = byId("graficosBlocked");
+  const area = byId("graficosAdminArea");
+  const admin = isAdmin();
+  if (blocked) blocked.style.display = admin ? "none" : "block";
+  if (area) area.style.display = admin ? "block" : "none";
+}
+
+function renderGraficosSistema() {
+  aplicarPermissaoGraficos();
+  if (!isAdmin()) return;
+
+  const inicio = byId("grafDataInicio")?.value || "";
+  const fim = byId("grafDataFim")?.value || "";
+  const produtoId = byId("grafProduto")?.value || "";
+  const tipo = byId("grafTipo")?.value || "dia";
+
+  let itens = [...(db.movements || [])];
+
+  if (inicio) {
+    const ini = new Date(inicio + "T00:00:00");
+    itens = itens.filter(m => m.created_at && new Date(m.created_at) >= ini);
+  }
+  if (fim) {
+    const fimDate = new Date(fim + "T23:59:59");
+    itens = itens.filter(m => m.created_at && new Date(m.created_at) <= fimDate);
+  }
+  if (produtoId) {
+    itens = itens.filter(m => Number(m.product_id) === Number(produtoId));
+  }
+
+  const agrupado = {};
+  itens.forEach(m => {
+    const chave = chaveAgrupamentoData(m.created_at, tipo);
+    if (!agrupado[chave]) agrupado[chave] = { entrada: 0, saida: 0, order: new Date(m.created_at || 0).getTime() };
+    const t = String(m.type || "").toLowerCase();
+    const q = Number(m.quantity || 0);
+    if (['entrada','entrada_manual','entrada_produto','criar_produto'].includes(t)) agrupado[chave].entrada += q;
+    if (['saida','baixa_manual','baixa_scanner'].includes(t)) agrupado[chave].saida += q;
+  });
+
+  const labels = Object.keys(agrupado).sort((a,b) => (agrupado[a].order || 0) - (agrupado[b].order || 0));
+  const entradas = labels.map(k => agrupado[k].entrada);
+  const saidas = labels.map(k => agrupado[k].saida);
+
+  const totalEntradas = entradas.reduce((a,b) => a + b, 0);
+  const totalSaidas = saidas.reduce((a,b) => a + b, 0);
+
+  if (byId("grafTotalEntradas")) byId("grafTotalEntradas").textContent = totalEntradas;
+  if (byId("grafTotalSaidas")) byId("grafTotalSaidas").textContent = totalSaidas;
+  if (byId("grafSaldo")) byId("grafSaldo").textContent = totalEntradas - totalSaidas;
+
+  const nomeProduto = produtoId ? ((db.products || []).find(p => Number(p.id) === Number(produtoId))?.name || "Selecionado") : "Todos";
+  if (byId("grafProdutoSelecionado")) byId("grafProdutoSelecionado").textContent = nomeProduto;
+
+  const canvas = byId("graficoSistemaCanvas");
+  if (canvas && window.Chart) {
+    if (graficoSistemaChart) {
+      try { graficoSistemaChart.destroy(); } catch(e) {}
+    }
+    graficoSistemaChart = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Entradas', data: entradas, backgroundColor: 'rgba(22,163,74,0.7)', borderColor: 'rgba(22,163,74,1)', borderWidth: 1 },
+          { label: 'Saídas', data: saidas, backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgba(239,68,68,1)', borderWidth: 1 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
+}
 
 document.addEventListener("click", function(ev) {
   const btn = ev.target.closest(".sidebar button");
