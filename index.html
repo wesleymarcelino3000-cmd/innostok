@@ -769,6 +769,7 @@ async function loadAll() {
   const prodRes = await sb.from('products').select('*').order('id');
   db.users = usersRes.data || [];
   db.products = prodRes.data || [];
+  try { syncMinimosFromProducts(); } catch(e) {}
   await loadHistorico();
   await loadPendingLabels();
   try { preencherSelectProduto(); } catch(e) {}
@@ -1371,14 +1372,54 @@ function saveMinimosMap(map) {
   localStorage.setItem("inno_stock_minimos", JSON.stringify(map || {}));
 }
 
+function syncMinimosFromProducts() {
+  const map = getMinimosMap();
+  let changed = false;
+  (db.products || []).forEach(p => {
+    const key = String(p?.id ?? "");
+    const dbMin = Number(p?.min);
+    if (key && Number.isFinite(dbMin) && dbMin > 0 && (!Object.prototype.hasOwnProperty.call(map, key) || Number(map[key]) !== dbMin)) {
+      map[key] = dbMin;
+      changed = true
+    }
+  });
+  if (changed) saveMinimosMap(map);
+}
+
 function getMinimoProduto(p) {
   const map = getMinimosMap();
   const key = String(p?.id ?? "");
   const localMin = Number(map[key]);
   const dbMin = Number(p?.min);
-  if (Number.isFinite(localMin) && localMin > 0) return localMin;
-  if (Number.isFinite(dbMin) && dbMin > 0) return dbMin;
+  if (Number.isFinite(localMin) && localMin >= 0) return localMin;
+  if (Number.isFinite(dbMin) && dbMin >= 0) return dbMin;
   return 0;
+}
+
+async function editarMinimo(i){
+  if(!isAdmin()) return;
+  const p = db.products[i];
+  if (!p) return;
+
+  const atual = getMinimoProduto(p);
+  const novo = prompt("Estoque mínimo para " + p.name, atual ?? 0);
+  if(novo === null) return;
+
+  const valor = Number(novo);
+  if(Number.isNaN(valor) || valor < 0) return alert("Valor inválido");
+
+  const map = getMinimosMap();
+  map[String(p.id)] = valor;
+  saveMinimosMap(map);
+
+  try {
+    await sb.from('products').update({ min: valor }).eq('id', p.id);
+  } catch (e) {}
+
+  p.min = valor;
+  await loadAll();
+  render();
+  verificarEstoqueBaixoAdmin();
 }
 
 function verificarEstoqueBaixoAdmin() {
@@ -1386,9 +1427,12 @@ function verificarEstoqueBaixoAdmin() {
   const baixos = (db.products || []).filter(p => Number(p.stock || 0) <= getMinimoProduto(p) && getMinimoProduto(p) > 0);
   if (!baixos.length) return;
 
-  let msg = "⚠️ Estoque baixo:\n\n";
+  let msg = "⚠️ Estoque baixo:
+
+";
   baixos.forEach(p => {
-    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + getMinimoProduto(p) + ")\n";
+    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + getMinimoProduto(p) + ")
+";
   });
 
   setTimeout(() => alert(msg), 500);
@@ -1581,7 +1625,7 @@ function renderEstoqueCompleto() {
       <td>${p.internal_code || ""}</td>
       <td>
         ${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}
-        ${admin ? `<button class="secondary-action" onclick="editarMinimo(${i})">Min ${getMinimoProduto(p) || 0}</button>` : ""}
+        ${admin ? `<button class="secondary-action" onclick="editarMinimo(${i})">Min ${getMinimoProduto(p)}</button>` : ""}
       </td>
     </tr>
   `).join("");
