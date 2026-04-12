@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stok Online</title>
+<title>Inno Stock Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -125,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stok</h2>
-      <div class="sub">InnoLife</div>
+      <h2>Inno Stock</h2>
+      <div class="sub">Versão online compartilhada</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -143,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Inno Stok</h1>
-        <div style="color:#6b7280">InnoLife</div>
+        <h1 style="margin:0 0 6px">Painel de gestão</h1>
+        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -1076,7 +1076,7 @@ async function registrarManual() {
 function renderEtiquetas() {
   const tbody = byId("listaEtiquetas");
   if (!tbody) return;
-  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.category || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
+  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
   tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
 function gerarEtiqueta(i) {
@@ -1320,42 +1320,44 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-async function editarProduto(i){
+async function editarProduto(i) {
+  if (isOperador()) return alert("Operador não pode editar produto.");
   const p = db.products[i];
+  if (!p) return;
 
-  const nome = prompt("Nome", p.name);
-  if(nome === null) return;
+  const novoNome = prompt("Editar nome:", p.name || "");
+  if (novoNome === null) return;
 
-  const codigo = prompt("Código de barras", p.barcode || "");
-  if(codigo === null) return;
+  const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
+  if (novoCodigoBarras === null) return;
 
-  const categoria = prompt("Categoria", p.category || "");
-  if(categoria === null) return;
+  const novaCategoria = prompt("Editar categoria:", p.category || "");
+  if (novaCategoria === null) return;
 
-  const preco = prompt("Preço", p.price || 0);
-  if(preco === null) return;
+  const novaQtd = prompt("Editar quantidade:", p.stock ?? 0);
+  if (novaQtd === null) return;
 
-  p.name = nome;
-  p.barcode = codigo;
-  p.category = categoria;
-  p.price = Number(preco || 0);
+  const novoPreco = prompt("Editar preço:", p.price ?? 0);
+  if (novoPreco === null) return;
 
-  sb.from('products').update({
-    name: nome,
-    barcode: codigo,
-    category: categoria,
-    price: Number(preco || 0)
+  await sb.from('products').update({
+    name: novoNome,
+    barcode: novoCodigoBarras,
+    category: novaCategoria,
+    stock: Number(novaQtd || 0),
+    price: Number(novoPreco || 0)
   }).eq('id', p.id);
 
-  render();
-}).eq('id', p.id);
-  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
+  try {
+    await registrarHistorico('editar_produto', 'produtos', novoNome, Number(novaQtd || 0), 'Produto editado');
+  } catch (e) {}
+
   await loadAll();
   render();
 }
 function render() {
   if (byId("lista")) {
-    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.category || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
+    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
   }
   if (byId("s1")) byId("s1").innerText = db.products.length;
   if (byId("s2")) byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
