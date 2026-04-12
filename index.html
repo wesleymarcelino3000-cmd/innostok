@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -125,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub">InnoLife</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -143,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+        <h1 style="margin:0 0 6px">Inno Stok</h1>
+        <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -421,7 +421,7 @@ function formatDateTime(v) {
 
 async function loadPendingLabels() {
   try {
-    const res = sb.from('pending_labels').select('*').order('id', { ascending: false });
+    const res = await sb.from('pending_labels').select('*').order('id', { ascending: false });
     db.pendingLabels = res.data || [];
   } catch (e) {
     db.pendingLabels = [];
@@ -480,16 +480,16 @@ async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
     const existingActive = getActiveLabelRecord(productId);
     const pending = getPendingLabelRecord(productId);
     if (existingActive) {
-      sb.from('pending_labels').update({
+      await sb.from('pending_labels').update({
         product_name: productName || "",
         quantity_remaining: Number(qty || 0),
         stock_label: stockLabel || "",
         status: 'ativa'
       }).eq('id', existingActive.id);
     } else if (pending && Number(pending.quantity_remaining) === Number(qty || 0)) {
-      sb.from('pending_labels').update({ status: 'ativa', stock_label: stockLabel || "" }).eq('id', pending.id);
+      await sb.from('pending_labels').update({ status: 'ativa', stock_label: stockLabel || "" }).eq('id', pending.id);
     } else {
-      sb.from('pending_labels').insert({
+      await sb.from('pending_labels').insert({
         product_id: productId,
         product_name: productName || "",
         quantity_remaining: Number(qty || 0),
@@ -506,18 +506,18 @@ async function enviarRestanteParaFila(productId, productName, remaining, stockLa
   try {
     const active = getActiveLabelRecord(productId);
     if (active) {
-      sb.from('pending_labels').update({ status: 'consumida' }).eq('id', active.id);
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', active.id);
     }
     const pend = getPendingLabelRecord(productId);
     if (pend) {
-      sb.from('pending_labels').update({
+      await sb.from('pending_labels').update({
         product_name: productName || "",
         quantity_remaining: Number(remaining || 0),
         stock_label: stockLabel || "",
         status: 'pendente'
       }).eq('id', pend.id);
     } else {
-      sb.from('pending_labels').insert({
+      await sb.from('pending_labels').insert({
         product_id: productId,
         product_name: productName || "",
         quantity_remaining: Number(remaining || 0),
@@ -540,7 +540,7 @@ async function removerEtiquetaPendente(i) {
   const item = pendentes[i];
   if (!item) return;
   if (!confirm("Deseja excluir esta etiqueta pendente?")) return;
-  sb.from('pending_labels').delete().eq('id', item.id);
+  await sb.from('pending_labels').delete().eq('id', item.id);
   await loadPendingLabels();
   renderFilaEtiquetas();
 }
@@ -549,7 +549,7 @@ async function limparFilaEtiquetas() {
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
   if (!confirm("Deseja limpar toda a fila de etiquetas pendentes?")) return;
   const pendentes = (db.pendingLabels || []).filter(x => x.status === "pendente").map(x => x.id);
-  if (pendentes.length) sb.from('pending_labels').delete().in('id', pendentes);
+  if (pendentes.length) await sb.from('pending_labels').delete().in('id', pendentes);
   await loadPendingLabels();
   renderFilaEtiquetas();
 }
@@ -559,9 +559,9 @@ async function marcarPendenteComoAtiva(item) {
   try {
     const active = getActiveLabelRecord(item.product_id);
     if (active && active.id !== item.id) {
-      sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
+      await sb.from('pending_labels').update({ status: 'substituida' }).eq('id', active.id);
     }
-    sb.from('pending_labels').update({ status: 'ativa' }).eq('id', item.id);
+    await sb.from('pending_labels').update({ status: 'ativa' }).eq('id', item.id);
     await loadPendingLabels();
     renderFilaEtiquetas();
   } catch (e) {}
@@ -674,7 +674,7 @@ async function imprimirFilaEtiquetas() {
 
 async function registrarHistorico(action, source, productName, quantity, details) {
   try {
-    let res = sb.from('movements').insert({
+    let res = await sb.from('movements').insert({
       product_id: null,
       product_name: productName || "",
       type: action || "",
@@ -684,7 +684,7 @@ async function registrarHistorico(action, source, productName, quantity, details
       details: details || ""
     });
     if (res && res.error) {
-      sb.from('movements').insert({
+      await sb.from('movements').insert({
         product_id: null,
         product_name: productName || "",
         type: action || "",
@@ -698,7 +698,7 @@ async function registrarHistorico(action, source, productName, quantity, details
 
 async function loadHistorico() {
   try {
-    const res = sb.from('movements').select('*').order('id', { ascending: false });
+    const res = await sb.from('movements').select('*').order('id', { ascending: false });
     db.movements = res.data || [];
     db.filteredMovements = [...db.movements];
   } catch (e) {
@@ -734,20 +734,19 @@ async function bootstrap() {
   const ok = await testConnection();
   if (!ok) return;
   await ensureSeedAdmin();
-  loadAll();
+  await loadAll();
   if (db.sessionUser && currentUser()) {
     byId("loginPage").classList.add("hidden");
     byId("app").classList.remove("hidden");
     applyUserPermissions();
     render();
-    verificarEstoqueBaixoAdmin();
     applyUserPermissions();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
 }
 async function testConnection() {
   try {
-    const res = sb.from('app_users').select('id').limit(1);
+    const res = await sb.from('app_users').select('id').limit(1);
     if (res.error) {
       showNotice("Rode o arquivo SQL_SETUP.sql no SQL Editor do Supabase antes de usar.");
       return false;
@@ -759,29 +758,16 @@ async function testConnection() {
   }
 }
 async function ensureSeedAdmin() {
-  const res = sb.from('app_users').select('*').eq('username', 'admin').limit(1);
+  const res = await sb.from('app_users').select('*').eq('username', 'admin').limit(1);
   if (!res.data || !res.data.length) {
-    sb.from('app_users').insert({ name:'Administrador', username:'admin', password:'123456', role:'admin' });
+    await sb.from('app_users').insert({ name:'Administrador', username:'admin', password:'123456', role:'admin' });
   }
 }
 async function loadAll() {
-  const usersRes = sb.from('app_users').select('*').order('id');
-  const prodRes = sb.from('products').select('*').order('id');
+  const usersRes = await sb.from('app_users').select('*').order('id');
+  const prodRes = await sb.from('products').select('*').order('id');
   db.users = usersRes.data || [];
   db.products = prodRes.data || [];
-
-  try {
-    const map = getMinimosMap();
-    db.products = db.products.map(p => {
-      const localMin = Number(map[String(p.id)]);
-      if (Number.isFinite(localMin) && localMin >= 0) {
-        return { ...p, min: localMin };
-      }
-      return p;
-    });
-    syncMinimosFromProducts();
-  } catch(e) {}
-
   await loadHistorico();
   await loadPendingLabels();
   try { preencherSelectProduto(); } catch(e) {}
@@ -802,7 +788,7 @@ async function login() {
   if (loading) loading.classList.add("show");
 
   try {
-    const res = sb.from('app_users').select('*').eq('username', user).eq('password', pass).limit(1);
+    const res = await sb.from('app_users').select('*').eq('username', user).eq('password', pass).limit(1);
 
     if (res.error || !res.data || !res.data.length) {
       if (loading) loading.classList.remove("show");
@@ -815,7 +801,7 @@ async function login() {
 
     db.sessionUser = res.data[0].username;
     saveSession();
-    loadAll();
+    await loadAll();
 
     const loginPage = byId("loginPage");
     if (loginPage) loginPage.classList.add("login-success-flash");
@@ -826,7 +812,6 @@ async function login() {
       byId("app").classList.remove("hidden");
       applyUserPermissions();
       render();
-      verificarEstoqueBaixoAdmin();
       applyUserPermissions();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
@@ -925,14 +910,13 @@ async function salvarConta() {
   const nova = byId("accSenhaNova").value;
   const payload = { name, username };
   if (atual && nova && atual === u.password) payload.password = nova;
-  sb.from('app_users').update(payload).eq('id', u.id);
+  await sb.from('app_users').update(payload).eq('id', u.id);
   await registrarHistorico('editar_conta', 'conta', '', 0, 'Conta atualizada');
   db.sessionUser = username;
   saveSession();
-  loadAll();
+  await loadAll();
   applyUserPermissions();
   render();
-  verificarEstoqueBaixoAdmin();
   alert("Conta salva");
 }
 async function criarUsuario() {
@@ -946,13 +930,13 @@ async function criarUsuario() {
   const password = byId("uSenha").value.trim();
   const role = byId("uRole").value || "operador";
   if (!name || !username || !password) return;
-  sb.from('app_users').insert({ name, username, password, role });
+  await sb.from('app_users').insert({ name, username, password, role });
   await registrarHistorico('criar_usuario', 'usuarios', username, 0, 'Nível: ' + role);
   byId("uNome").value = "";
   byId("uUsuario").value = "";
   byId("uSenha").value = "";
   byId("uRole").value = "operador";
-  loadAll();
+  await loadAll();
   render();
 }
 async function editarUsuario(i) {
@@ -962,22 +946,22 @@ async function editarUsuario(i) {
   const username = prompt("Editar usuário:", u.username);
   const role = prompt("Editar nível (admin, conferente ou operador):", u.role);
   if (name === null && username === null && role === null) return;
-  sb.from('app_users').update({
+  await sb.from('app_users').update({
     name: name ?? u.name,
     username: username ?? u.username,
     role: (role === "admin" || role === "operador" || role === "conferente") ? role : u.role
   }).eq('id', u.id);
   await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador" || role === "conferente") ? role : u.role));
-  loadAll();
+  await loadAll();
   render();
 }
 async function removerUsuario(i) {
   if (!isAdmin()) return;
   const u = db.users[i];
   
-  sb.from('app_users').delete().eq('id', u.id);
+  await sb.from('app_users').delete().eq('id', u.id);
   await registrarHistorico('excluir_usuario', 'usuarios', u.username, 0, 'Usuário removido');
-  loadAll();
+  await loadAll();
   render();
 }
 function renderUsuarios() {
@@ -1005,10 +989,10 @@ async function add() {
   };
   if (!item.name) return;
   item.stock_label = createStockLabelCode(item);
-  sb.from('products').insert(item);
+  await sb.from('products').insert(item);
   await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
   ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
-  loadAll();
+  await loadAll();
   render();
 }
 
@@ -1027,8 +1011,8 @@ async function darEntradaProduto() {
   const p = db.products[idx];
   const novoEstoque = Number(p.stock || 0) + qtd;
 
-  sb.from('products').update({ stock: novoEstoque }).eq('id', p.id);
-  sb.from('movements').insert({
+  await sb.from('products').update({ stock: novoEstoque }).eq('id', p.id);
+  await sb.from('movements').insert({
     product_id: p.id,
     product_name: p.name,
     type: 'entrada',
@@ -1044,7 +1028,7 @@ async function darEntradaProduto() {
 
   if (byId("entradaQtd")) byId("entradaQtd").value = "1";
   if (byId("entradaObs")) byId("entradaObs").value = "";
-  loadAll();
+  await loadAll();
   render();
   alert("Entrada registrada com sucesso.");
 }
@@ -1064,15 +1048,15 @@ async function registrarManual() {
   const p = db.products[idx];
   const newStock = tipo === "saida" ? Math.max(0, Number(p.stock) - qtdm) : Number(p.stock) + qtdm;
 
-  sb.from('products').update({ stock:newStock }).eq('id', p.id);
+  await sb.from('products').update({ stock:newStock }).eq('id', p.id);
   {
-    let mv = sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '', details:'Movimentação manual' });
+    let mv = await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '', details:'Movimentação manual' });
     if (mv && mv.error) {
-      sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '' });
+      await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:tipo, quantity:qtdm, source:'manual', username:currentUser()?.username || '' });
     }
   }
   await registrarHistorico(tipo === 'saida' ? 'baixa_manual' : 'entrada_manual', 'manual', p.name, qtdm, 'Movimentação manual');
-  loadAll();
+  await loadAll();
   render();
 
   const etiquetaAtiva = getActiveLabelRecord(p.id);
@@ -1083,7 +1067,7 @@ async function registrarManual() {
       await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
       alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
     } else {
-      sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
       await loadPendingLabels();
       renderFilaEtiquetas();
     }
@@ -1301,15 +1285,15 @@ async function darBaixaScanner() {
   if (Number(p.stock) < qtd) return alert("Estoque insuficiente.");
   const newStock = Number(p.stock) - qtd;
 
-  sb.from('products').update({ stock:newStock }).eq('id', p.id);
+  await sb.from('products').update({ stock:newStock }).eq('id', p.id);
   {
-    let mv = sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '', details:'Baixa via scanner' });
+    let mv = await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '', details:'Baixa via scanner' });
     if (mv && mv.error) {
-      sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '' });
+      await sb.from('movements').insert({ product_id:p.id, product_name:p.name, type:'saida', quantity:qtd, source:'scanner', username:currentUser()?.username || '' });
     }
   }
   await registrarHistorico('baixa_scanner', 'scanner', p.name, qtd, 'Baixa via scanner');
-  loadAll();
+  await loadAll();
   render();
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
@@ -1322,7 +1306,7 @@ async function darBaixaScanner() {
       await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
       alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
     } else {
-      sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
       await loadPendingLabels();
       renderFilaEtiquetas();
     }
@@ -1332,126 +1316,27 @@ async function excluirProduto(i) {
   if (isOperador()) return alert("Operador não pode excluir produto.");
   if (!confirm("Deseja excluir este produto?")) return;
   await registrarHistorico('excluir_produto', 'produtos', db.products[i].name, db.products[i].stock, 'Produto removido');
-  sb.from('products').delete().eq('id', db.products[i].id);
-  loadAll();
+  await sb.from('products').delete().eq('id', db.products[i].id);
+  await loadAll();
   render();
 }
 async function editarProduto(i) {
   if (isOperador()) return alert("Operador não pode editar produto.");
   const p = db.products[i];
-  if (!p) return;
-
-  const novoNome = prompt("Editar nome:", p.name || "");
-  if (novoNome === null) return;
-
+  const novoNome = prompt("Editar nome:", p.name);
   const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
-  if (novoCodigoBarras === null) return;
-
-  const novaCategoria = prompt("Editar categoria:", p.category || "");
-  if (novaCategoria === null) return;
-
-  const novaQtd = prompt("Editar quantidade:", p.stock ?? 0);
-  if (novaQtd === null) return;
-
-  const novoPreco = prompt("Editar preço:", p.price ?? 0);
-  if (novoPreco === null) return;
-
-  sb.from('products').update({
-    name: novoNome,
-    barcode: novoCodigoBarras,
-    category: novaCategoria,
-    stock: Number(novaQtd || 0),
-    price: Number(novoPreco || 0)
+  const novaQtd = prompt("Editar quantidade:", p.stock);
+  const novoPreco = prompt("Editar preço:", p.price);
+  await sb.from('products').update({
+    name: novoNome ?? p.name,
+    barcode: novoCodigoBarras ?? p.barcode,
+    stock: Number(novaQtd ?? p.stock),
+    price: Number(novoPreco ?? p.price)
   }).eq('id', p.id);
-
-  try {
-    await registrarHistorico('editar_produto', 'produtos', novoNome, Number(novaQtd || 0), 'Produto editado');
-  } catch (e) {}
-
-  loadAll();
+  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
+  await loadAll();
   render();
 }
-
-function getMinimosMap() {
-  try {
-    return JSON.parse(localStorage.getItem("inno_stock_minimos") || "{}");
-  } catch (e) {
-    return {};
-  }
-}
-
-function saveMinimosMap(map) {
-  localStorage.setItem("inno_stock_minimos", JSON.stringify(map || {}));
-}
-
-function syncMinimosFromProducts() {
-  const map = getMinimosMap();
-  let changed = false;
-  (db.products || []).forEach(p => {
-    const key = String(p?.id ?? "");
-    const dbMin = Number(p?.min);
-    if (key && Number.isFinite(dbMin) && dbMin > 0 && (!Object.prototype.hasOwnProperty.call(map, key) || Number(map[key]) !== dbMin)) {
-      map[key] = dbMin;
-      changed = true
-    }
-  });
-  if (changed) saveMinimosMap(map);
-}
-
-function getMinimoProduto(p) {
-  const map = getMinimosMap();
-  const key = String(p?.id ?? "");
-  const localMin = Number(map[key]);
-  const dbMin = Number(p?.min);
-  if (Number.isFinite(localMin) && localMin >= 0) return localMin;
-  if (Number.isFinite(dbMin) && dbMin >= 0) return dbMin;
-  return 0;
-}
-
-async function editarMinimo(i){
-  if(!isAdmin()) return;
-  const p = db.products[i];
-  if (!p) return;
-
-  const atual = getMinimoProduto(p);
-  const novo = prompt("Estoque mínimo para " + p.name, atual || 0);
-  if(novo === null) return;
-
-  const valor = Number(novo);
-  if(isNaN(valor) || valor < 0) return alert("Valor inválido");
-
-  const map = getMinimosMap();
-  map[String(p.id)] = valor;
-  saveMinimosMap(map);
-
-  try {
-    sb.from('products').update({ min: valor }).eq('id', p.id);
-  } catch (e) {}
-
-  p.min = valor;
-  loadAll();
-  render();
-  verificarEstoqueBaixoAdmin();
-}
-
-function verificarEstoqueBaixoAdmin() {
-  if (!isAdmin()) return;
-  const baixos = (db.products || []).filter(
-    p => Number(p.stock || 0) <= Number(getMinimoProduto(p) || 0) &&
-         Number(getMinimoProduto(p) || 0) > 0
-  );
-  if (!baixos.length) return;
-
-  let msg = "⚠️ Estoque baixo:\n\n";
-  baixos.forEach(p => {
-    msg += (p.name || "Produto") +
-      " (Atual: " + Number(p.stock || 0) +
-      " | Mín: " + Number(getMinimoProduto(p) || 0) + ")\n";
-  });
-
-  setTimeout(function () { alert(msg); }, 500);
-}
-
 function render() {
   if (byId("lista")) {
     byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
@@ -1628,7 +1513,6 @@ function renderEstoqueCompleto() {
   const tbody = byId("listaEstoqueCompleto");
   if (!tbody) return;
   const canManage = !isOperador();
-  const admin = isAdmin();
   const rows = db.products.map((p, i) => `
     <tr>
       <td>${p.name || ""}</td>
@@ -1637,10 +1521,7 @@ function renderEstoqueCompleto() {
       <td>${p.stock ?? 0}</td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
-      <td>
-        ${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}
-        ${admin ? `<button class="secondary-action" onclick="editarMinimo(${i})">Min ${Number(getMinimoProduto(p) || 0)}</button>` : ""}
-      </td>
+      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}</td>
     </tr>
   `).join("");
   tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
@@ -1687,7 +1568,7 @@ async function limparHistorico() {
   if (!isAdmin()) return alert("Somente admin pode limpar o histórico.");
   if (!verificarSenhaAdminAtual()) return alert("Senha incorreta.");
   if (!confirm("Deseja apagar TODO o histórico?")) return;
-  sb.from('movements').delete().gt('id', 0);
+  await sb.from('movements').delete().gt('id', 0);
   await loadHistorico();
   renderHistorico();
   renderEtiquetas();
@@ -1700,7 +1581,7 @@ async function limparHistoricoHoje() {
   if (!confirm("Deseja apagar apenas o histórico de hoje?")) return;
   const agora = new Date();
   const inicio = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).toISOString();
-  sb.from('movements').delete().gte('created_at', inicio);
+  await sb.from('movements').delete().gte('created_at', inicio);
   await loadHistorico();
   renderHistorico();
   renderEtiquetas();
@@ -1762,7 +1643,7 @@ async function exportarHistoricoExcel() {
 
 async function registrarHistorico(action, source, productName, quantity, details) {
   try {
-    let res = sb.from('movements').insert({
+    let res = await sb.from('movements').insert({
       product_id: null,
       product_name: productName || "",
       type: action || "",
@@ -1772,7 +1653,7 @@ async function registrarHistorico(action, source, productName, quantity, details
       details: details || ""
     });
     if (res && res.error) {
-      sb.from('movements').insert({
+      await sb.from('movements').insert({
         product_id: null,
         product_name: productName || "",
         type: action || "",
@@ -1786,7 +1667,7 @@ async function registrarHistorico(action, source, productName, quantity, details
 
 async function loadHistorico() {
   try {
-    const res = sb.from('movements').select('*').order('id', { ascending: false });
+    const res = await sb.from('movements').select('*').order('id', { ascending: false });
     db.movements = res.data || [];
     db.filteredMovements = [...db.movements];
   } catch (e) {
@@ -1857,26 +1738,5 @@ function gerarEtiquetaManual() {
 
 function imprimirEtiqueta() {
   window.print();
-}
-</script>
-
-
-<script>
-function editarMinimo(i){
-  if(!isAdmin()) return;
-
-  const p = db.products[i];
-  const novo = prompt("Estoque mínimo para " + p.name, p.min || 0);
-
-  if(novo === null) return;
-
-  const valor = Number(novo);
-  if(isNaN(valor)) return alert("Valor inválido");
-
-  p.min = valor;
-
-  sb.from('products').update({ min: valor }).eq('id', p.id);
-
-  render();
 }
 </script>
