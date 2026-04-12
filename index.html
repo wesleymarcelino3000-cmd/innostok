@@ -8,6 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{--bg1:#020617;--bg2:#0f172a;--bg3:#1e3a8a;--blue:#2563eb;--sidebar:#031126}
 *{box-sizing:border-box}
@@ -109,6 +110,18 @@ th{background:#f8fafc}
 .filter-bar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:14px}
 @media(max-width:900px){.filter-bar{grid-template-columns:1fr}}
 
+
+.alert-list{display:grid;gap:10px}
+.alert-item{padding:12px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.summary-card{background:rgba(255,255,255,.88);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05)}
+.summary-title{font-size:13px;color:#6b7280;margin-bottom:6px}
+.summary-value{font-size:28px;font-weight:800;color:#031126}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:rgba(255,255,255,.88);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05)}
+.chart-box{position:relative;height:320px}
+@media(max-width:1100px){.summary-cards,.chart-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -142,6 +155,7 @@ th{background:#f8fafc}
       <button onclick="showSection('produto'); return false;">Novo produto</button>
       <button onclick="showSection('manual'); return false;">Baixa manual</button>
       <button id="btnVerEstoque" onclick="showSection('estoqueView'); return false;">Ver estoque</button>
+      <button id="btnDashboard" class="hidden" onclick="showSection('dashboardView'); return false;">Dashboard</button>
       <button id="btnExportarExcel" onclick="exportarPlanilha()">Exportar Excel</button>
       <button id="historyBtn" class="hidden" onclick="showSection('historicoView'); return false;">Histórico</button>
       <button onclick="showSection('etiquetas'); return false;">Etiquetas de estoque</button>
@@ -156,6 +170,7 @@ th{background:#f8fafc}
         <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
+      <div id="adminStockAlerts" class="warnbox hidden"></div>
 
 
       <div id="account" class="card hidden">
@@ -204,8 +219,9 @@ th{background:#f8fafc}
           <div><label>Categoria</label><select class="app-input" id="categoria"></select></div>
           <div><label>Preço</label><input class="app-input" id="preco" type="number" min="0" step="0.01"></div>
         </div>
-        <div class="form-row" style="margin-top:12px">
+        <div class="form-row-3" style="margin-top:12px">
           <div><label>Estoque</label><input class="app-input" id="qtd" type="number" min="0"></div>
+          <div><label>Estoque mínimo</label><input class="app-input" id="estoqueMinimo" type="number" min="0" value="0"></div>
           <div><label>Código interno automático</label><input class="app-input" id="codigoInternoPreview" disabled placeholder="Gerado automaticamente"></div>
         </div>
         <button class="action" style="margin-top:12px" onclick="add()">Salvar</button>
@@ -254,7 +270,7 @@ th{background:#f8fafc}
         </div>
         <div class="wrap">
           <table>
-            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Mínimo</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
             <tbody id="listaEstoqueCompleto"></tbody></table>
         </div>
       </div>
@@ -290,7 +306,33 @@ th{background:#f8fafc}
         </div>
       </div>
 
-      <div id="etiquetas" class="card hidden">
+      
+      <div id="dashboardView" class="hidden">
+        <div class="summary-cards">
+          <div class="summary-card"><div class="summary-title">Produtos cadastrados</div><div id="dashTotalProdutos" class="summary-value">0</div></div>
+          <div class="summary-card"><div class="summary-title">Unidades em estoque</div><div id="dashTotalUnidades" class="summary-value">0</div></div>
+          <div class="summary-card"><div class="summary-title">Entradas (7 dias)</div><div id="dashEntradas7" class="summary-value">0</div></div>
+          <div class="summary-card"><div class="summary-title">Saídas (7 dias)</div><div id="dashSaidas7" class="summary-value">0</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Alertas de estoque mínimo</h3>
+          <div id="dashAlertasLista" class="alert-list"></div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="chart-card">
+            <h3 style="margin-top:0">Entradas x saídas nos últimos 7 dias</h3>
+            <div class="chart-box"><canvas id="movChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h3 style="margin-top:0">Produtos com menor estoque</h3>
+            <div class="chart-box"><canvas id="stockChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+<div id="etiquetas" class="card hidden">
         <h3>Etiquetas de estoque</h3>
         <div class="form-row" style="margin-bottom:12px">
           <div><label>Quantidade de etiquetas</label><input class="app-input" id="labelQty" type="number" min="1" value="1"></div>
@@ -371,7 +413,7 @@ th{background:#f8fafc}
     </div>
     <div class="form-row" style="margin-top:12px">
       <div><label>Quantidade</label><input class="app-input" id="editQtdProduto" type="number" min="0"></div>
-      <div></div>
+      <div><label>Estoque mínimo</label><input class="app-input" id="editMinProduto" type="number" min="0"></div>
     </div>
     <div class="modal-actions">
       <button class="action" onclick="salvarEdicaoProduto()">Salvar</button>
@@ -402,6 +444,125 @@ const CATEGORIAS_PADRAO = [
 function getCategoriasDisponiveis() {
   const atuais = (db.products || []).map(p => String(p.category || "").trim()).filter(Boolean);
   return [...new Set([...CATEGORIAS_PADRAO, ...atuais])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+
+
+let movChartInstance = null;
+let stockChartInstance = null;
+
+function getProdutosAbaixoMinimo() {
+  return (db.products || []).filter(p => Number(p.stock || 0) <= Number(p.stock_min || 0));
+}
+
+function renderAdminStockAlerts() {
+  const box = byId("adminStockAlerts");
+  if (!box) return;
+  if (!isAdmin()) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const alertas = getProdutosAbaixoMinimo();
+  if (!alertas.length) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  box.classList.remove("hidden");
+  box.innerHTML = "<b>Atenção:</b> " + alertas.length + " produto(s) estão no estoque mínimo ou abaixo dele.<div style=\"margin-top:8px\">" +
+    alertas.slice(0, 8).map(p => `• ${p.name} — estoque ${Number(p.stock || 0)} / mínimo ${Number(p.stock_min || 0)}`).join("<br>") +
+    "</div>";
+}
+
+function getLast7DaysLabels() {
+  const labels = [];
+  const today = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+  }
+  return labels;
+}
+
+function getMovementSeriesLast7Days() {
+  const entries = new Array(7).fill(0);
+  const exits = new Array(7).fill(0);
+  const today = new Date();
+  const start = new Date(today);
+  start.setHours(0,0,0,0);
+  start.setDate(today.getDate() - 6);
+
+  (db.movements || []).forEach(m => {
+    if (!m.created_at) return;
+    const d = new Date(m.created_at);
+    if (d < start) return;
+    const diff = Math.floor((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(start.getFullYear(), start.getMonth(), start.getDate())) / 86400000);
+    if (diff < 0 || diff > 6) return;
+    const qty = Number(m.quantity || 0);
+    const tipo = String(m.type || "").toLowerCase();
+    if (tipo.includes('entrada')) entries[diff] += qty;
+    if (tipo.includes('saida') || tipo.includes('baixa')) exits[diff] += qty;
+  });
+  return { entries, exits };
+}
+
+function renderDashboard() {
+  if (!isAdmin()) return;
+  const totalProdutos = (db.products || []).length;
+  const totalUnidades = (db.products || []).reduce((a, b) => a + Number(b.stock || 0), 0);
+  const abaixoMinimo = getProdutosAbaixoMinimo();
+  const series = getMovementSeriesLast7Days();
+  const entradas7 = series.entries.reduce((a,b)=>a+b,0);
+  const saidas7 = series.exits.reduce((a,b)=>a+b,0);
+
+  if (byId("dashTotalProdutos")) byId("dashTotalProdutos").textContent = String(totalProdutos);
+  if (byId("dashTotalUnidades")) byId("dashTotalUnidades").textContent = String(totalUnidades);
+  if (byId("dashEntradas7")) byId("dashEntradas7").textContent = String(entradas7);
+  if (byId("dashSaidas7")) byId("dashSaidas7").textContent = String(saidas7);
+
+  const lista = byId("dashAlertasLista");
+  if (lista) {
+    lista.innerHTML = abaixoMinimo.length
+      ? abaixoMinimo.map(p => `<div class="alert-item">${p.name} — estoque atual ${Number(p.stock || 0)} | mínimo ${Number(p.stock_min || 0)}</div>`).join("")
+      : '<div class="notice">Nenhum produto está abaixo do estoque mínimo.</div>';
+  }
+
+  if (window.Chart) {
+    const labels = getLast7DaysLabels();
+    const movCanvas = byId("movChart");
+    if (movCanvas) {
+      if (movChartInstance) movChartInstance.destroy();
+      movChartInstance = new Chart(movCanvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Entradas', data: series.entries, backgroundColor: 'rgba(22,163,74,0.75)', borderRadius: 8 },
+            { label: 'Saídas', data: series.exits, backgroundColor: 'rgba(37,99,235,0.75)', borderRadius: 8 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+      });
+    }
+
+    const menores = [...(db.products || [])].sort((a,b)=>Number(a.stock || 0)-Number(b.stock || 0)).slice(0, 8);
+    const stockCanvas = byId("stockChart");
+    if (stockCanvas) {
+      if (stockChartInstance) stockChartInstance.destroy();
+      stockChartInstance = new Chart(stockCanvas, {
+        type: 'line',
+        data: {
+          labels: menores.map(p => p.name),
+          datasets: [
+            { label: 'Estoque atual', data: menores.map(p => Number(p.stock || 0)), borderColor: 'rgba(239,68,68,0.9)', backgroundColor: 'rgba(239,68,68,0.18)', tension: 0.3, fill: true },
+            { label: 'Estoque mínimo', data: menores.map(p => Number(p.stock_min || 0)), borderColor: 'rgba(245,158,11,0.9)', backgroundColor: 'rgba(245,158,11,0.12)', tension: 0.3, fill: false }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+      });
+    }
+  }
 }
 
 function preencherCategoriasSelects() {
@@ -447,6 +608,7 @@ function abrirModalEditarProduto(i) {
   byId("editCodigoProduto").value = p.barcode || "";
   byId("editCategoriaProduto").value = p.category || "";
   byId("editQtdProduto").value = Number(p.stock || 0);
+  byId("editMinProduto").value = Number(p.stock_min || 0);
   byId("editPrecoProduto").value = Number(p.price || 0);
   byId("modalEditarProduto").classList.add("show");
 }
@@ -465,6 +627,7 @@ async function salvarEdicaoProduto() {
   const novoCodigoBarras = byId("editCodigoProduto").value.trim();
   const novaCategoria = byId("editCategoriaProduto").value.trim();
   const novaQtd = Number(byId("editQtdProduto").value || 0);
+  const novoMin = Number(byId("editMinProduto").value || 0);
   const novoPreco = Number(byId("editPrecoProduto").value || 0);
 
   if (!novoNome) return alert("Informe o nome do produto.");
@@ -474,6 +637,7 @@ async function salvarEdicaoProduto() {
     barcode: novoCodigoBarras,
     category: novaCategoria,
     stock: Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
+    stock_min: Number.isFinite(novoMin) ? novoMin : Number(p.stock_min || 0),
     price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0)
   }).eq('id', p.id);
 
@@ -482,7 +646,7 @@ async function salvarEdicaoProduto() {
     'produtos',
     novoNome,
     Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
-    'Categoria: ' + (novaCategoria || '')
+    'Categoria: ' + (novaCategoria || '') + ' | Estoque mínimo: ' + (Number.isFinite(novoMin) ? novoMin : Number(p.stock_min || 0))
   );
 
   fecharModalEditarProduto();
@@ -509,7 +673,7 @@ function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code1
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 
 function hideAllSections() {
-  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","entradaEstoque","manual","estoqueView","dashboardView","historicoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -525,6 +689,7 @@ function showSection(id) {
 
   if (id === "estoqueView") renderEstoqueCompleto();
   if (id === "historicoView") renderHistorico();
+  if (id === "dashboardView") renderDashboard();
   if (id === "filaEtiquetas") renderFilaEtiquetas();
   if (id === "users") {
     applyUserPermissions();
@@ -783,6 +948,18 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
 .filter-bar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:14px}
 @media(max-width:900px){.filter-bar{grid-template-columns:1fr}}
 
+
+.alert-list{display:grid;gap:10px}
+.alert-item{padding:12px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.summary-card{background:rgba(255,255,255,.88);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05)}
+.summary-title{font-size:13px;color:#6b7280;margin-bottom:6px}
+.summary-value{font-size:28px;font-weight:800;color:#031126}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:rgba(255,255,255,.88);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05)}
+.chart-box{position:relative;height:320px}
+@media(max-width:1100px){.summary-cards,.chart-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -929,6 +1106,7 @@ async function loadAll() {
   try { preencherSelectProduto(); } catch(e) {}
   try { renderEtiquetas(); } catch(e) {}
   try { preencherCategoriasSelects(); } catch(e) {}
+  try { renderAdminStockAlerts(); } catch(e) {}
   db.lastInternalCode = db.products.reduce((m, p) => {
     const n = Number(String(p.internal_code || '').replace('INT-',''));
     return Number.isFinite(n) ? Math.max(m, n) : m;
@@ -1018,6 +1196,7 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
     setVisible("historyBtn", true);
+    setVisible("btnDashboard", true);
   } else if (conferente) {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -1029,6 +1208,7 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
     setVisible("historyBtn", false);
+    setVisible("btnDashboard", false);
   } else if (operador) {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -1040,6 +1220,7 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
     setVisible("historyBtn", false);
+    setVisible("btnDashboard", false);
   } else {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -1051,6 +1232,7 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
     setVisible("historyBtn", false);
+    setVisible("btnDashboard", false);
   }
 
   if (admin && u) {
@@ -1142,13 +1324,14 @@ async function add() {
     category: byId("categoria").value.trim(),
     price: Number(byId("preco").value || 0),
     stock: Number(byId("qtd").value || 0),
+    stock_min: Number(byId("estoqueMinimo").value || 0),
     internal_code: nextInternalCode()
   };
   if (!item.name) return;
   item.stock_label = createStockLabelCode(item);
   await sb.from('products').insert(item);
-  await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
-  ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
+  await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || '') + ' | Estoque mínimo: ' + Number(item.stock_min || 0));
+  ["nome","codigoBarras","categoria","preco","qtd","estoqueMinimo","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
   await loadAll();
   render();
 }
@@ -1322,6 +1505,18 @@ function gerarEtiqueta(i) {
 .modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
 .filter-bar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:14px}
 @media(max-width:900px){.filter-bar{grid-template-columns:1fr}}
+
+
+.alert-list{display:grid;gap:10px}
+.alert-item{padding:12px;border-radius:14px;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-weight:700}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.summary-card{background:rgba(255,255,255,.88);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05)}
+.summary-title{font-size:13px;color:#6b7280;margin-bottom:6px}
+.summary-value{font-size:28px;font-weight:800;color:#031126}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:rgba(255,255,255,.88);backdrop-filter:blur(3px);padding:18px;border-radius:18px;box-shadow:0 8px 22px rgba(0,0,0,.05)}
+.chart-box{position:relative;height:320px}
+@media(max-width:1100px){.summary-cards,.chart-grid{grid-template-columns:1fr}}
 
 </style>
 </head>
@@ -1504,6 +1699,8 @@ function render() {
   try { renderHistorico(); } catch(e) {}
   try { renderFilaEtiquetas(); } catch(e) {}
   try { preencherCategoriasSelects(); } catch(e) {}
+  try { renderAdminStockAlerts(); } catch(e) {}
+  try { if (!byId("dashboardView")?.classList.contains("hidden")) renderDashboard(); } catch(e) {}
 }
 
 async function exportarPlanilha() {
@@ -1688,13 +1885,14 @@ function renderEstoqueCompleto() {
       <td>${p.barcode || ""}</td>
       <td>${p.category || ""}</td>
       <td>${p.stock ?? 0}</td>
+      <td>${p.stock_min ?? 0}</td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
       <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${idxReal})">Editar</button> <button class="danger" onclick="excluirProduto(${idxReal})">Excluir</button>` : ""}</td>
     </tr>
   `}).join("");
 
-  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto encontrado.</td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="8">Nenhum produto encontrado.</td></tr>`;
 }
 
 

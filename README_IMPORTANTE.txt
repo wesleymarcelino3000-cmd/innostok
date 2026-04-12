@@ -76,3 +76,12 @@ Correção adicional:
 
 Correção:
 - impressão da etiqueta restante da fila agora mostra o conteúdo em vez de página em branco.
+
+
+Atualização:
+- alerta de estoque mínimo personalizável por produto
+- dashboard com gráficos de entradas e saídas
+- acesso ao dashboard e alertas somente para admin
+
+Se seu banco já existe:
+- rode novamente o SQL_SETUP.sql para adicionar a coluna stock_min
