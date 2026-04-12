@@ -1436,18 +1436,20 @@ async function editarMinimo(i){
 
 function verificarEstoqueBaixoAdmin() {
   if (!isAdmin()) return;
-  const baixos = (db.products || []).filter(p => Number(p.stock || 0) <= Number(getMinimoProduto(p) || 0) && Number(getMinimoProduto(p) || 0) > 0);
+  const baixos = (db.products || []).filter(
+    p => Number(p.stock || 0) <= Number(getMinimoProduto(p) || 0) &&
+         Number(getMinimoProduto(p) || 0) > 0
+  );
   if (!baixos.length) return;
 
-  let msg = "⚠️ Estoque baixo:
-
-";
+  let msg = "⚠️ Estoque baixo:\n\n";
   baixos.forEach(p => {
-    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + Number(getMinimoProduto(p) || 0) + ")
-";
+    msg += (p.name || "Produto") +
+      " (Atual: " + Number(p.stock || 0) +
+      " | Mín: " + Number(getMinimoProduto(p) || 0) + ")\n";
   });
 
-  setTimeout(() => alert(msg), 500);
+  setTimeout(function () { alert(msg); }, 500);
 }
 
 function render() {
