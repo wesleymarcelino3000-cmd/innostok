@@ -739,7 +739,7 @@ async function bootstrap() {
     byId("loginPage").classList.add("hidden");
     byId("app").classList.remove("hidden");
     applyUserPermissions();
-    render(); verificarEstoqueBaixoAdmin();
+    render();
     applyUserPermissions();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
@@ -811,7 +811,7 @@ async function login() {
       if (loginPage) loginPage.classList.add("hidden");
       byId("app").classList.remove("hidden");
       applyUserPermissions();
-      render(); verificarEstoqueBaixoAdmin();
+      render();
       applyUserPermissions();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
@@ -916,7 +916,7 @@ async function salvarConta() {
   saveSession();
   await loadAll();
   applyUserPermissions();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
   alert("Conta salva");
 }
 async function criarUsuario() {
@@ -937,7 +937,7 @@ async function criarUsuario() {
   byId("uSenha").value = "";
   byId("uRole").value = "operador";
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
 }
 async function editarUsuario(i) {
   if (!isAdmin()) return alert("Somente admin pode editar usuários.");
@@ -953,7 +953,7 @@ async function editarUsuario(i) {
   }).eq('id', u.id);
   await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador" || role === "conferente") ? role : u.role));
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
 }
 async function removerUsuario(i) {
   if (!isAdmin()) return;
@@ -962,7 +962,7 @@ async function removerUsuario(i) {
   await sb.from('app_users').delete().eq('id', u.id);
   await registrarHistorico('excluir_usuario', 'usuarios', u.username, 0, 'Usuário removido');
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
 }
 function renderUsuarios() {
   const tbody = byId("listaUsuarios");
@@ -993,7 +993,7 @@ async function add() {
   await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
   ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
 }
 
 function preencherSelectEntradaProduto() {
@@ -1029,7 +1029,7 @@ async function darEntradaProduto() {
   if (byId("entradaQtd")) byId("entradaQtd").value = "1";
   if (byId("entradaObs")) byId("entradaObs").value = "";
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
   alert("Entrada registrada com sucesso.");
 }
 
@@ -1057,7 +1057,7 @@ async function registrarManual() {
   }
   await registrarHistorico(tipo === 'saida' ? 'baixa_manual' : 'entrada_manual', 'manual', p.name, qtdm, 'Movimentação manual');
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
 
   const etiquetaAtiva = getActiveLabelRecord(p.id);
   const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
@@ -1076,11 +1076,7 @@ async function registrarManual() {
 function renderEtiquetas() {
   const tbody = byId("listaEtiquetas");
   if (!tbody) return;
-  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td>
-<td>
-${isAdmin() ? `<button onclick="editarMinimo(${i})">Min</button>` : ``}
-</td>
-</tr>`).join("");
+  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.category || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
   tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
 function gerarEtiqueta(i) {
@@ -1298,7 +1294,7 @@ async function darBaixaScanner() {
   }
   await registrarHistorico('baixa_scanner', 'scanner', p.name, qtd, 'Baixa via scanner');
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
+  render();
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
 
@@ -1322,62 +1318,44 @@ async function excluirProduto(i) {
   await registrarHistorico('excluir_produto', 'produtos', db.products[i].name, db.products[i].stock, 'Produto removido');
   await sb.from('products').delete().eq('id', db.products[i].id);
   await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
-}
-async function editarProduto(i) {
-  if (isOperador()) return alert("Operador não pode editar produto.");
-  const p = db.products[i];
-  const novoNome = prompt("Editar nome:", p.name);
-  const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
-  const novaQtd = prompt("Editar quantidade:", p.stock);
-  const novoPreco = prompt("Editar preço:", p.price);
-  await sb.from('products').update({
-    name: novoNome ?? p.name,
-    barcode: novoCodigoBarras ?? p.barcode,
-    stock: Number(novaQtd ?? p.stock),
-    price: Number(novoPreco ?? p.price)
-  }).eq('id', p.id);
-  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
-  await loadAll();
-  render(); verificarEstoqueBaixoAdmin();
-}
-
-
-function editarMinimo(i){
-  if(!isAdmin()) return;
-  const p = db.products[i];
-  const novo = prompt("Definir estoque mínimo para " + p.name, p.min || 0);
-  if(novo === null) return;
-
-  const valor = Number(novo);
-  if(isNaN(valor)) return alert("Valor inválido");
-
-  p.min = valor;
-
-  sb.from('products').update({ min: valor }).eq('id', p.id);
-
   render();
 }
+async function editarProduto(i){
+  const p = db.products[i];
 
-function verificarEstoqueBaixoAdmin(){
-  if(!isAdmin()) return;
-  const baixos = (db.products || []).filter(p => Number(p.stock) <= Number(p.min || 0));
-  if(baixos.length){
-    let msg = "⚠️ Estoque baixo:\n\n";
-    baixos.forEach(p=>{
-      msg += p.name + " (Atual: " + p.stock + " | Mín: " + (p.min || 0) + ")\n";
-    });
-    setTimeout(()=>alert(msg), 500);
-  }
+  const nome = prompt("Nome", p.name);
+  if(nome === null) return;
+
+  const codigo = prompt("Código de barras", p.barcode || "");
+  if(codigo === null) return;
+
+  const categoria = prompt("Categoria", p.category || "");
+  if(categoria === null) return;
+
+  const preco = prompt("Preço", p.price || 0);
+  if(preco === null) return;
+
+  p.name = nome;
+  p.barcode = codigo;
+  p.category = categoria;
+  p.price = Number(preco || 0);
+
+  sb.from('products').update({
+    name: nome,
+    barcode: codigo,
+    category: categoria,
+    price: Number(preco || 0)
+  }).eq('id', p.id);
+
+  render();
+}).eq('id', p.id);
+  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
+  await loadAll();
+  render();
 }
-
 function render() {
   if (byId("lista")) {
-    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td>
-<td>
-${isAdmin() ? `<button onclick="editarMinimo(${i})">Min</button>` : ``}
-</td>
-</tr>`).join("");
+    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.category || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
   }
   if (byId("s1")) byId("s1").innerText = db.products.length;
   if (byId("s2")) byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
@@ -1776,5 +1754,26 @@ function gerarEtiquetaManual() {
 
 function imprimirEtiqueta() {
   window.print();
+}
+</script>
+
+
+<script>
+function editarMinimo(i){
+  if(!isAdmin()) return;
+
+  const p = db.products[i];
+  const novo = prompt("Estoque mínimo para " + p.name, p.min || 0);
+
+  if(novo === null) return;
+
+  const valor = Number(novo);
+  if(isNaN(valor)) return alert("Valor inválido");
+
+  p.min = valor;
+
+  sb.from('products').update({ min: valor }).eq('id', p.id);
+
+  render();
 }
 </script>
