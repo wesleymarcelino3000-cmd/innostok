@@ -769,7 +769,19 @@ async function loadAll() {
   const prodRes = await sb.from('products').select('*').order('id');
   db.users = usersRes.data || [];
   db.products = prodRes.data || [];
-  try { syncMinimosFromProducts(); } catch(e) {}
+
+  try {
+    const map = getMinimosMap();
+    db.products = db.products.map(p => {
+      const localMin = Number(map[String(p.id)]);
+      if (Number.isFinite(localMin) && localMin >= 0) {
+        return { ...p, min: localMin };
+      }
+      return p;
+    });
+    syncMinimosFromProducts();
+  } catch(e) {}
+
   await loadHistorico();
   await loadPendingLabels();
   try { preencherSelectProduto(); } catch(e) {}
@@ -1396,7 +1408,7 @@ function getMinimoProduto(p) {
   return 0;
 }
 
-async function editarMinimo(i){
+async async function editarMinimo(i){
   if(!isAdmin()) return;
   const p = db.products[i];
   if (!p) return;
@@ -1424,14 +1436,15 @@ async function editarMinimo(i){
 
 function verificarEstoqueBaixoAdmin() {
   if (!isAdmin()) return;
-  const baixos = (db.products || []).filter(
-    p => Number(p.stock || 0) <= getMinimoProduto(p) && getMinimoProduto(p) > 0
-  );
+  const baixos = (db.products || []).filter(p => Number(p.stock || 0) <= Number(getMinimoProduto(p) || 0) && Number(getMinimoProduto(p) || 0) > 0);
   if (!baixos.length) return;
 
-  let msg = "⚠️ Estoque baixo:\n\n";
+  let msg = "⚠️ Estoque baixo:
+
+";
   baixos.forEach(p => {
-    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + getMinimoProduto(p) + ")\n";
+    msg += (p.name || "Produto") + " (Atual: " + Number(p.stock || 0) + " | Mín: " + Number(getMinimoProduto(p) || 0) + ")
+";
   });
 
   setTimeout(() => alert(msg), 500);
@@ -1624,7 +1637,7 @@ function renderEstoqueCompleto() {
       <td>${p.internal_code || ""}</td>
       <td>
         ${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}
-        ${admin ? `<button class="secondary-action" onclick="editarMinimo(${i})">Min ${getMinimoProduto(p)}</button>` : ""}
+        ${admin ? `<button class="secondary-action" onclick="editarMinimo(${i})">Min ${Number(getMinimoProduto(p) || 0)}</button>` : ""}
       </td>
     </tr>
   `).join("");
