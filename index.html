@@ -446,9 +446,6 @@ let audioCtx = null;
 let graficoSistemaChart = null;
 let currentProductHistoryId = null;
 let productHistoryChart = null;
-let graficoSistemaChart = null;
-
-
 function byId(id) { return document.getElementById(id); }
 function saveSession() { localStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
 function loadSession() { db.sessionUser = localStorage.getItem("inno_stock_online_session_user") || null; }
