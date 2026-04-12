@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inno Stock Online</title>
+<title>Inno Stok Online</title>
 <link rel="icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -125,8 +125,8 @@ th{background:#f8fafc}
   <div class="layout">
     <div class="sidebar">
       <img src="logo.png" alt="Logo">
-      <h2>Inno Stock</h2>
-      <div class="sub">Versão online compartilhada</div>
+      <h2>Inno Stok</h2>
+      <div class="sub">InnoLife</div>
       <div id="userChip" class="user-chip">Usuário</div>
       <button onclick="showSection('account'); return false;">Minha conta</button>
       <button onclick="showSection('users'); return false;">Usuários</button>
@@ -143,8 +143,8 @@ th{background:#f8fafc}
 
     <div class="main">
       <div class="top-card">
-        <h1 style="margin:0 0 6px">Painel de gestão</h1>
-        <div style="color:#6b7280">Estoque compartilhado pelo Supabase.</div>
+        <h1 style="margin:0 0 6px">Inno Stok</h1>
+        <div style="color:#6b7280">InnoLife</div>
       </div>
       <div id="notice" class="notice hidden"></div>
 
@@ -1076,7 +1076,11 @@ async function registrarManual() {
 function renderEtiquetas() {
   const tbody = byId("listaEtiquetas");
   if (!tbody) return;
-  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
+  const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td>
+<td>
+${isAdmin() ? `<button onclick="editarMinimo(${i})">Min</button>` : ``}
+</td>
+</tr>`).join("");
   tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
 function gerarEtiqueta(i) {
@@ -1338,6 +1342,23 @@ async function editarProduto(i) {
   render(); verificarEstoqueBaixoAdmin();
 }
 
+
+function editarMinimo(i){
+  if(!isAdmin()) return;
+  const p = db.products[i];
+  const novo = prompt("Definir estoque mínimo para " + p.name, p.min || 0);
+  if(novo === null) return;
+
+  const valor = Number(novo);
+  if(isNaN(valor)) return alert("Valor inválido");
+
+  p.min = valor;
+
+  sb.from('products').update({ min: valor }).eq('id', p.id);
+
+  render();
+}
+
 function verificarEstoqueBaixoAdmin(){
   if(!isAdmin()) return;
   const baixos = (db.products || []).filter(p => Number(p.stock) <= Number(p.min || 0));
@@ -1352,7 +1373,11 @@ function verificarEstoqueBaixoAdmin(){
 
 function render() {
   if (byId("lista")) {
-    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
+    byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td>
+<td>
+${isAdmin() ? `<button onclick="editarMinimo(${i})">Min</button>` : ``}
+</td>
+</tr>`).join("");
   }
   if (byId("s1")) byId("s1").innerText = db.products.length;
   if (byId("s2")) byId("s2").innerText = db.products.reduce((a, b) => a + Number(b.stock || 0), 0);
