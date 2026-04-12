@@ -1531,6 +1531,7 @@ function renderEstoqueCompleto() {
   const tbody = byId("listaEstoqueCompleto");
   if (!tbody) return;
   const canManage = !isOperador();
+  const admin = isAdmin();
   const rows = db.products.map((p, i) => `
     <tr>
       <td>${p.name || ""}</td>
@@ -1539,7 +1540,10 @@ function renderEstoqueCompleto() {
       <td>${p.stock ?? 0}</td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
-      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}</td>
+      <td>
+        ${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}
+        ${admin ? `<button class="secondary-action" onclick="editarMinimo(${i})">Min</button>` : ""}
+      </td>
     </tr>
   `).join("");
   tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
