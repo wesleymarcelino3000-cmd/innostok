@@ -100,6 +100,15 @@ th{background:#f8fafc}
   100%{opacity:1;transform:translateY(0)}
 }
 
+
+.modal-overlay{position:fixed;inset:0;background:rgba(3,17,38,.72);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
+.modal-overlay.show{display:flex}
+.modal-card{width:100%;max-width:560px;background:#fff;border-radius:24px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);color:#111827}
+.modal-card h3{margin:0 0 14px}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.filter-bar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:14px}
+@media(max-width:900px){.filter-bar{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -192,7 +201,7 @@ th{background:#f8fafc}
           <div><label>Código de barras</label><input class="app-input" id="codigoBarras"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
-          <div><label>Categoria</label><input class="app-input" id="categoria"></div>
+          <div><label>Categoria</label><select class="app-input" id="categoria"></select></div>
           <div><label>Preço</label><input class="app-input" id="preco" type="number" min="0" step="0.01"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
@@ -231,6 +240,18 @@ th{background:#f8fafc}
       <div id="estoqueView" class="card hidden">
         <h3>Estoque</h3>
         <div style="color:#6b7280;margin-bottom:10px">Visualização completa do estoque.</div>
+        <div class="filter-bar">
+          <div>
+            <label>Buscar produto</label>
+            <input class="app-input" id="filtroEstoqueBusca" placeholder="Digite o nome, código ou categoria" oninput="renderEstoqueCompleto()">
+          </div>
+          <div>
+            <label>Filtrar por categoria</label>
+            <select class="app-input" id="filtroEstoqueCategoria" onchange="renderEstoqueCompleto()">
+              <option value="">Todas as categorias</option>
+            </select>
+          </div>
+        </div>
         <div class="wrap">
           <table>
             <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
@@ -336,6 +357,29 @@ th{background:#f8fafc}
   </div>
 </div>
 
+
+<div id="modalEditarProduto" class="modal-overlay">
+  <div class="modal-card">
+    <h3>Editar produto</h3>
+    <div class="form-row">
+      <div><label>Nome</label><input class="app-input" id="editNomeProduto"></div>
+      <div><label>Código de barras</label><input class="app-input" id="editCodigoProduto"></div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div><label>Categoria</label><select class="app-input" id="editCategoriaProduto"></select></div>
+      <div><label>Preço</label><input class="app-input" id="editPrecoProduto" type="number" min="0" step="0.01"></div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div><label>Quantidade</label><input class="app-input" id="editQtdProduto" type="number" min="0"></div>
+      <div></div>
+    </div>
+    <div class="modal-actions">
+      <button class="action" onclick="salvarEdicaoProduto()">Salvar</button>
+      <button class="secondary-action" onclick="fecharModalEditarProduto()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
 let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
@@ -344,6 +388,109 @@ let scannerRunning = false;
 let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
+let produtoEditandoId = null;
+const CATEGORIAS_PADRAO = [
+  "Suplementos",
+  "Cosméticos",
+  "Dermocosméticos",
+  "Séruns",
+  "Kits",
+  "Acessórios",
+  "Outros"
+];
+
+function getCategoriasDisponiveis() {
+  const atuais = (db.products || []).map(p => String(p.category || "").trim()).filter(Boolean);
+  return [...new Set([...CATEGORIAS_PADRAO, ...atuais])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+
+function preencherCategoriasSelects() {
+  const categorias = getCategoriasDisponiveis();
+  const montarOptions = (selected = "") => {
+    const base = ['<option value="">Selecione</option>'];
+    categorias.forEach(cat => {
+      const sel = selected === cat ? ' selected' : '';
+      base.push(`<option value="${cat}"${sel}>${cat}</option>`);
+    });
+    return base.join("");
+  };
+
+  const categoriaNovo = byId("categoria");
+  if (categoriaNovo) {
+    const atual = categoriaNovo.value || "";
+    categoriaNovo.innerHTML = montarOptions(atual);
+    if (atual) categoriaNovo.value = atual;
+  }
+
+  const categoriaEditar = byId("editCategoriaProduto");
+  if (categoriaEditar) {
+    const atualEdit = categoriaEditar.value || "";
+    categoriaEditar.innerHTML = montarOptions(atualEdit);
+    if (atualEdit) categoriaEditar.value = atualEdit;
+  }
+
+  const filtro = byId("filtroEstoqueCategoria");
+  if (filtro) {
+    const atualFiltro = filtro.value || "";
+    filtro.innerHTML = '<option value="">Todas as categorias</option>' + categorias.map(cat => `<option value="${cat}">${cat}</option>`).join("");
+    filtro.value = atualFiltro;
+  }
+}
+
+function abrirModalEditarProduto(i) {
+  if (isOperador()) return alert("Operador não pode editar produto.");
+  const p = db.products[i];
+  if (!p) return;
+  produtoEditandoId = p.id;
+  preencherCategoriasSelects();
+  byId("editNomeProduto").value = p.name || "";
+  byId("editCodigoProduto").value = p.barcode || "";
+  byId("editCategoriaProduto").value = p.category || "";
+  byId("editQtdProduto").value = Number(p.stock || 0);
+  byId("editPrecoProduto").value = Number(p.price || 0);
+  byId("modalEditarProduto").classList.add("show");
+}
+
+function fecharModalEditarProduto() {
+  produtoEditandoId = null;
+  byId("modalEditarProduto")?.classList.remove("show");
+}
+
+async function salvarEdicaoProduto() {
+  if (produtoEditandoId == null) return;
+  const p = (db.products || []).find(x => Number(x.id) === Number(produtoEditandoId));
+  if (!p) return;
+
+  const novoNome = byId("editNomeProduto").value.trim();
+  const novoCodigoBarras = byId("editCodigoProduto").value.trim();
+  const novaCategoria = byId("editCategoriaProduto").value.trim();
+  const novaQtd = Number(byId("editQtdProduto").value || 0);
+  const novoPreco = Number(byId("editPrecoProduto").value || 0);
+
+  if (!novoNome) return alert("Informe o nome do produto.");
+
+  await sb.from('products').update({
+    name: novoNome,
+    barcode: novoCodigoBarras,
+    category: novaCategoria,
+    stock: Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
+    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0)
+  }).eq('id', p.id);
+
+  await registrarHistorico(
+    'editar_produto',
+    'produtos',
+    novoNome,
+    Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
+    'Categoria: ' + (novaCategoria || '')
+  );
+
+  fecharModalEditarProduto();
+  await loadAll();
+  render();
+}
+
+
 
 
 function byId(id) { return document.getElementById(id); }
@@ -627,6 +774,15 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
     display: block;
     margin: 0 auto 6px auto;
   }
+
+.modal-overlay{position:fixed;inset:0;background:rgba(3,17,38,.72);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
+.modal-overlay.show{display:flex}
+.modal-card{width:100%;max-width:560px;background:#fff;border-radius:24px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);color:#111827}
+.modal-card h3{margin:0 0 14px}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.filter-bar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:14px}
+@media(max-width:900px){.filter-bar{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -772,6 +928,7 @@ async function loadAll() {
   await loadPendingLabels();
   try { preencherSelectProduto(); } catch(e) {}
   try { renderEtiquetas(); } catch(e) {}
+  try { preencherCategoriasSelects(); } catch(e) {}
   db.lastInternalCode = db.products.reduce((m, p) => {
     const n = Number(String(p.internal_code || '').replace('INT-',''));
     return Number.isFinite(n) ? Math.max(m, n) : m;
@@ -1157,6 +1314,15 @@ function gerarEtiqueta(i) {
     margin-top: 3px;
     word-break: break-all;
   }
+
+.modal-overlay{position:fixed;inset:0;background:rgba(3,17,38,.72);display:none;align-items:center;justify-content:center;z-index:10000;padding:16px}
+.modal-overlay.show{display:flex}
+.modal-card{width:100%;max-width:560px;background:#fff;border-radius:24px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);color:#111827}
+.modal-card h3{margin:0 0 14px}
+.modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.filter-bar{display:grid;grid-template-columns:1fr 220px;gap:12px;margin-bottom:14px}
+@media(max-width:900px){.filter-bar{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -1320,22 +1486,8 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-async function editarProduto(i) {
-  if (isOperador()) return alert("Operador não pode editar produto.");
-  const p = db.products[i];
-  const novoNome = prompt("Editar nome:", p.name);
-  const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
-  const novaQtd = prompt("Editar quantidade:", p.stock);
-  const novoPreco = prompt("Editar preço:", p.price);
-  await sb.from('products').update({
-    name: novoNome ?? p.name,
-    barcode: novoCodigoBarras ?? p.barcode,
-    stock: Number(novaQtd ?? p.stock),
-    price: Number(novoPreco ?? p.price)
-  }).eq('id', p.id);
-  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
-  await loadAll();
-  render();
+function editarProduto(i) {
+  abrirModalEditarProduto(i);
 }
 function render() {
   if (byId("lista")) {
@@ -1351,6 +1503,7 @@ function render() {
   try { renderEstoqueCompleto(); } catch(e) {}
   try { renderHistorico(); } catch(e) {}
   try { renderFilaEtiquetas(); } catch(e) {}
+  try { preencherCategoriasSelects(); } catch(e) {}
 }
 
 async function exportarPlanilha() {
@@ -1513,7 +1666,23 @@ function renderEstoqueCompleto() {
   const tbody = byId("listaEstoqueCompleto");
   if (!tbody) return;
   const canManage = !isOperador();
-  const rows = db.products.map((p, i) => `
+  const busca = String(byId("filtroEstoqueBusca")?.value || "").trim().toLowerCase();
+  const categoria = String(byId("filtroEstoqueCategoria")?.value || "").trim().toLowerCase();
+
+  const filtrados = (db.products || []).filter(p => {
+    const nome = String(p.name || "").toLowerCase();
+    const barcode = String(p.barcode || "").toLowerCase();
+    const cat = String(p.category || "").toLowerCase();
+    const internal = String(p.internal_code || "").toLowerCase();
+
+    const okBusca = !busca || nome.includes(busca) || barcode.includes(busca) || cat.includes(busca) || internal.includes(busca);
+    const okCategoria = !categoria || cat === categoria;
+    return okBusca && okCategoria;
+  });
+
+  const rows = filtrados.map((p, i) => {
+    const idxReal = db.products.findIndex(x => x.id === p.id);
+    return `
     <tr>
       <td>${p.name || ""}</td>
       <td>${p.barcode || ""}</td>
@@ -1521,10 +1690,11 @@ function renderEstoqueCompleto() {
       <td>${p.stock ?? 0}</td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
-      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}</td>
+      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${idxReal})">Editar</button> <button class="danger" onclick="excluirProduto(${idxReal})">Excluir</button>` : ""}</td>
     </tr>
-  `).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
+  `}).join("");
+
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto encontrado.</td></tr>`;
 }
 
 
