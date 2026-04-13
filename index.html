@@ -110,6 +110,55 @@ th{background:#f8fafc}
 .hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
 @media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
 
+
+.edit-modal-overlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
+}
+.edit-modal-overlay.show{display:flex}
+.edit-modal{
+  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.55);
+}
+.edit-modal-top{
+  padding:24px 26px 18px;
+  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
+  color:#fff;
+}
+.edit-modal-top h3{margin:0;font-size:28px}
+.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
+.edit-modal-body{padding:22px 24px 24px}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
+.edit-field input,.edit-field select{
+  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
+  background:#fff; font:inherit; outline:none; transition:.18s ease;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
+}
+.edit-field input:focus,.edit-field select:focus{
+  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+.edit-highlight{
+  margin-bottom:18px; padding:14px 16px; border-radius:18px;
+  background:linear-gradient(135deg,#eff6ff,#dbeafe);
+  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
+}
+.edit-actions{
+  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
+}
+.edit-actions button{
+  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
+}
+.edit-cancel{background:#e2e8f0;color:#0f172a}
+.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
+@media(max-width:800px){
+  .edit-grid{grid-template-columns:1fr}
+  .edit-modal-top h3{font-size:24px}
+  .edit-actions button{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -440,6 +489,53 @@ th{background:#f8fafc}
   </div>
 </div>
 
+
+<div id="editModalOverlay" class="edit-modal-overlay">
+  <div class="edit-modal">
+    <div class="edit-modal-top">
+      <h3>Editar produto</h3>
+      <div class="sub">Atualize os dados do produto com uma experiência mais profissional</div>
+    </div>
+    <div class="edit-modal-body">
+      <div class="edit-highlight">
+        Produto em edição: <span id="editModalProdutoAtual">-</span>
+      </div>
+
+      <div class="edit-grid">
+        <div class="edit-field">
+          <label>Nome do produto</label>
+          <input id="editNomePremium" type="text" placeholder="Digite o nome do produto">
+        </div>
+        <div class="edit-field">
+          <label>Código de barras</label>
+          <input id="editCodigoPremium" type="text" placeholder="Digite o código de barras">
+        </div>
+        <div class="edit-field">
+          <label>Categoria</label>
+          <input id="editCategoriaPremium" type="text" placeholder="Digite a categoria">
+        </div>
+        <div class="edit-field">
+          <label>Quantidade em estoque</label>
+          <input id="editQtdPremium" type="number" min="0" placeholder="0">
+        </div>
+        <div class="edit-field">
+          <label>Preço</label>
+          <input id="editPrecoPremium" type="number" min="0" step="0.01" placeholder="0,00">
+        </div>
+        <div class="edit-field">
+          <label>Código interno</label>
+          <input id="editCodigoInternoPremium" type="text" disabled>
+        </div>
+      </div>
+
+      <div class="edit-actions">
+        <button class="edit-cancel" onclick="fecharModalEdicaoPremium()">Cancelar</button>
+        <button class="edit-save" onclick="salvarEdicaoPremium()">Salvar alterações</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
 let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
@@ -448,6 +544,66 @@ let scannerRunning = false;
 let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
+
+let produtoEditandoPremiumIndex = null;
+
+function abrirModalEdicaoPremium(i) {
+  if (isOperador()) return alert("Operador não pode editar produto.");
+  const p = db.products[i];
+  if (!p) return;
+
+  produtoEditandoPremiumIndex = i;
+  byId("editModalProdutoAtual").textContent = p.name || "-";
+  byId("editNomePremium").value = p.name || "";
+  byId("editCodigoPremium").value = p.barcode || "";
+  byId("editCategoriaPremium").value = p.category || "";
+  byId("editQtdPremium").value = Number(p.stock || 0);
+  byId("editPrecoPremium").value = Number(p.price || 0);
+  byId("editCodigoInternoPremium").value = p.internal_code || "";
+
+  byId("editModalOverlay").classList.add("show");
+}
+
+function fecharModalEdicaoPremium() {
+  produtoEditandoPremiumIndex = null;
+  byId("editModalOverlay")?.classList.remove("show");
+}
+
+async function salvarEdicaoPremium() {
+  if (produtoEditandoPremiumIndex === null || produtoEditandoPremiumIndex < 0) return;
+
+  const p = db.products[produtoEditandoPremiumIndex];
+  if (!p) return;
+
+  const novoNome = byId("editNomePremium").value.trim();
+  const novoCodigoBarras = byId("editCodigoPremium").value.trim();
+  const novaCategoria = byId("editCategoriaPremium").value.trim();
+  const novaQtd = Number(byId("editQtdPremium").value || 0);
+  const novoPreco = Number(byId("editPrecoPremium").value || 0);
+
+  if (!novoNome) return alert("Informe o nome do produto.");
+
+  await sb.from('products').update({
+    name: novoNome,
+    barcode: novoCodigoBarras,
+    category: novaCategoria,
+    stock: Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
+    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0)
+  }).eq('id', p.id);
+
+  await registrarHistorico(
+    'editar_produto',
+    'produtos',
+    novoNome,
+    Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
+    'Categoria: ' + (novaCategoria || '')
+  );
+
+  fecharModalEdicaoPremium();
+  await loadAll();
+  render();
+}
+
 let graficoSistemaChart = null;
 let currentProductHistoryId = null;
 let productHistoryChart = null;
@@ -743,6 +899,55 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
 
 .hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
 @media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
+
+
+.edit-modal-overlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
+}
+.edit-modal-overlay.show{display:flex}
+.edit-modal{
+  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.55);
+}
+.edit-modal-top{
+  padding:24px 26px 18px;
+  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
+  color:#fff;
+}
+.edit-modal-top h3{margin:0;font-size:28px}
+.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
+.edit-modal-body{padding:22px 24px 24px}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
+.edit-field input,.edit-field select{
+  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
+  background:#fff; font:inherit; outline:none; transition:.18s ease;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
+}
+.edit-field input:focus,.edit-field select:focus{
+  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+.edit-highlight{
+  margin-bottom:18px; padding:14px 16px; border-radius:18px;
+  background:linear-gradient(135deg,#eff6ff,#dbeafe);
+  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
+}
+.edit-actions{
+  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
+}
+.edit-actions button{
+  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
+}
+.edit-cancel{background:#e2e8f0;color:#0f172a}
+.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
+@media(max-width:800px){
+  .edit-grid{grid-template-columns:1fr}
+  .edit-modal-top h3{font-size:24px}
+  .edit-actions button{width:100%}
+}
 
 </style>
 </head>
@@ -1284,6 +1489,55 @@ function gerarEtiqueta(i) {
 .hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
 @media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
 
+
+.edit-modal-overlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
+}
+.edit-modal-overlay.show{display:flex}
+.edit-modal{
+  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.55);
+}
+.edit-modal-top{
+  padding:24px 26px 18px;
+  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
+  color:#fff;
+}
+.edit-modal-top h3{margin:0;font-size:28px}
+.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
+.edit-modal-body{padding:22px 24px 24px}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
+.edit-field input,.edit-field select{
+  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
+  background:#fff; font:inherit; outline:none; transition:.18s ease;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
+}
+.edit-field input:focus,.edit-field select:focus{
+  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+.edit-highlight{
+  margin-bottom:18px; padding:14px 16px; border-radius:18px;
+  background:linear-gradient(135deg,#eff6ff,#dbeafe);
+  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
+}
+.edit-actions{
+  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
+}
+.edit-actions button{
+  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
+}
+.edit-cancel{background:#e2e8f0;color:#0f172a}
+.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
+@media(max-width:800px){
+  .edit-grid{grid-template-columns:1fr}
+  .edit-modal-top h3{font-size:24px}
+  .edit-actions button{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -1447,35 +1701,8 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-async function editarProduto(i) {
-  if (isOperador()) return alert("Operador não pode editar produto.");
-
-  const p = db.products[i];
-
-  const novoNome = prompt("Editar nome:", p.name);
-  const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
-  const novaCategoria = prompt("Editar categoria:", p.category || "");
-  const novaQtd = prompt("Editar quantidade:", p.stock);
-  const novoPreco = prompt("Editar preço:", p.price);
-
-  await sb.from('products').update({
-    name: novoNome ?? p.name,
-    barcode: novoCodigoBarras ?? p.barcode,
-    category: novaCategoria ?? p.category,
-    stock: Number(novaQtd ?? p.stock),
-    price: Number(novoPreco ?? p.price)
-  }).eq('id', p.id);
-
-  await registrarHistorico(
-    'editar_produto',
-    'produtos',
-    novoNome ?? p.name,
-    Number(novaQtd ?? p.stock),
-    'Categoria: ' + (novaCategoria ?? p.category)
-  );
-
-  await loadAll();
-  render();
+function editarProduto(i) {
+  abrirModalEdicaoPremium(i);
 }
 
 function render() {
@@ -2127,6 +2354,15 @@ document.addEventListener("click", function(ev) {
       }
     } catch (e) {}
   }, 180);
+});
+
+
+document.addEventListener("keydown", function(ev){
+  if (ev.key === "Escape") fecharModalEdicaoPremium();
+});
+document.addEventListener("click", function(ev){
+  const overlay = byId("editModalOverlay");
+  if (overlay && ev.target === overlay) fecharModalEdicaoPremium();
 });
 
 bootstrap();
