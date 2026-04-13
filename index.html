@@ -1436,7 +1436,7 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-async async function editarProduto(i) {
+async function editarProduto(i) {
   if (isOperador()) return alert("Operador não pode editar produto.");
 
   const p = db.products[i];
