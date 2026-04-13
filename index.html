@@ -551,12 +551,8 @@ let produtoEditandoPremiumIndex = null;
 function preencherCategoriasNovoProduto() {
   const select = document.getElementById("categoria");
   if (!select) return;
-
-  select.innerHTML = CATEGORIAS.map(cat =>
-    `<option value="${cat}">${cat}</option>`
-  ).join("");
+  select.innerHTML = CATEGORIAS.map(cat => `<option value="${cat}">${cat}</option>`).join("");
 }
-
 const CATEGORIAS = [
   "Suplementos",
   "Cosméticos",
