@@ -1447,7 +1447,7 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-async async function editarProduto(i) {
+async function editarProduto(i) {
   if (isOperador()) return alert("Operador não pode editar produto.");
 
   const p = db.products[i];
@@ -1465,30 +1465,6 @@ async async function editarProduto(i) {
     stock: Number(novaQtd ?? p.stock),
     price: Number(novoPreco ?? p.price)
   }).eq('id', p.id);
-
-  await registrarHistorico(
-    'editar_produto',
-    'produtos',
-    novoNome ?? p.name,
-    Number(novaQtd ?? p.stock),
-    'Categoria: ' + (novaCategoria ?? p.category)
-  );
-
-  await loadAll();
-  render();
-}).eq('id', p.id);
-
-  await registrarHistorico(
-    'editar_produto',
-    'produtos',
-    novoNome ?? p.name,
-    Number(novaQtd ?? p.stock),
-    'Categoria: ' + (novaCategoria ?? p.category)
-  );
-
-  await loadAll();
-  render();
-}).eq('id', p.id);
 
   await registrarHistorico(
     'editar_produto',
