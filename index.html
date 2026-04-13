@@ -512,7 +512,7 @@ th{background:#f8fafc}
         </div>
         <div class="edit-field">
           <label>Categoria</label>
-          <input id="editCategoriaPremium" type="text" placeholder="Digite a categoria">
+          <select id="editCategoriaPremium"></select>
         </div>
         <div class="edit-field">
           <label>Quantidade em estoque</label>
@@ -547,16 +547,35 @@ let audioCtx = null;
 
 let produtoEditandoPremiumIndex = null;
 
+const CATEGORIAS = [
+  "Suplementos",
+  "Cosméticos",
+  "Séruns",
+  "Acessórios",
+  "Outros"
+];
+
+function preencherCategorias() {
+  const select = document.getElementById("editCategoriaPremium");
+  if (!select) return;
+
+  select.innerHTML = CATEGORIAS.map(cat =>
+    `<option value="${cat}">${cat}</option>`
+  ).join("");
+}
+
+
 function abrirModalEdicaoPremium(i) {
   if (isOperador()) return alert("Operador não pode editar produto.");
   const p = db.products[i];
+  preencherCategorias();
   if (!p) return;
 
   produtoEditandoPremiumIndex = i;
   byId("editModalProdutoAtual").textContent = p.name || "-";
   byId("editNomePremium").value = p.name || "";
   byId("editCodigoPremium").value = p.barcode || "";
-  byId("editCategoriaPremium").value = p.category || "";
+  document.getElementById("editCategoriaPremium").value = p.category || "";
   byId("editQtdPremium").value = Number(p.stock || 0);
   byId("editPrecoPremium").value = Number(p.price || 0);
   byId("editCodigoInternoPremium").value = p.internal_code || "";
@@ -1410,6 +1429,7 @@ function renderEtiquetas() {
 function gerarEtiqueta(i) {
   try {
     const p = db.products[i];
+  preencherCategorias();
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
@@ -2111,6 +2131,7 @@ function movimentosDoProduto(p) {
 function abrirHistoricoProduto(i) {
   if (!isAdmin()) return alert("Somente admin pode ver o histórico visual por produto.");
   const p = db.products[i];
+  preencherCategorias();
   if (!p) return;
   currentProductHistoryId = p.id;
   showSection('produtoHistoricoView');
