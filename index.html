@@ -252,7 +252,7 @@ th{background:#f8fafc}
           <div><label>Código de barras</label><input class="app-input" id="codigoBarras"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
-          <div><label>Categoria</label><input class="app-input" id="categoria"></div>
+          <div><label>Categoria</label><select class="app-input" id="categoria"></select></div>
           <div><label>Preço</label><input class="app-input" id="preco" type="number" min="0" step="0.01"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
@@ -547,6 +547,16 @@ let audioCtx = null;
 
 let produtoEditandoPremiumIndex = null;
 
+
+function preencherCategoriasNovoProduto() {
+  const select = document.getElementById("categoria");
+  if (!select) return;
+
+  select.innerHTML = CATEGORIAS.map(cat =>
+    `<option value="${cat}">${cat}</option>`
+  ).join("");
+}
+
 const CATEGORIAS = [
   "Suplementos",
   "Cosméticos",
@@ -649,6 +659,7 @@ function hideAllSections() {
 }
 function showSection(id) {
   if (id === "produto") {
+    preencherCategoriasNovoProduto();
     setTimeout(() => {
       try { renderProdutos(); } catch(e){}
     }, 100);
