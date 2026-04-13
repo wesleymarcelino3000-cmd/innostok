@@ -1465,11 +1465,8 @@ async function editarProduto(i) {
 
   await loadAll();
   render();
-}).eq('id', p.id);
-  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
-  await loadAll();
-  render();
 }
+
 function render() {
   if (byId("lista")) {
     byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
