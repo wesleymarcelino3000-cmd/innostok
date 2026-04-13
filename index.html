@@ -345,6 +345,33 @@ let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
 
+const CATEGORIAS = [
+  "Suplementos",
+  "Cosméticos",
+  "Séruns",
+  "Acessórios",
+  "Outros"
+];
+
+function preencherCategoriasSistema() {
+  const options = CATEGORIAS.map(cat => `<option value="${cat}">${cat}</option>`).join("");
+
+  const selectNovo = document.getElementById("categoria");
+  if (selectNovo) {
+    const atualNovo = selectNovo.value || "";
+    selectNovo.innerHTML = '<option value="">Selecione</option>' + options;
+    if (atualNovo) selectNovo.value = atualNovo;
+  }
+
+  const selectEdit = document.getElementById("editCategoriaPremium");
+  if (selectEdit) {
+    const atualEdit = selectEdit.value || "";
+    selectEdit.innerHTML = options;
+    if (atualEdit) selectEdit.value = atualEdit;
+  }
+}
+
+
 
 function byId(id) { return document.getElementById(id); }
 function saveSession() { localStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
@@ -1713,6 +1740,7 @@ document.addEventListener("click", function(ev) {
   }, 180);
 });
 
+try { preencherCategoriasSistema(); } catch(e) {}
 bootstrap();
 </script>
 </body>
