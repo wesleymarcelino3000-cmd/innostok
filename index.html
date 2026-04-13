@@ -82,7 +82,12 @@ th{background:#f8fafc}
     margin:0 !important;
   }
 }
-@media(max-width:1100px){.layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}.main{padding:14px}}
+@media(max-width:1100px){
+  .layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}
+  .main{padding:14px;overflow:visible !important;height:auto !important}
+  .sidebar{position:relative !important;top:auto !important;min-height:auto !important}
+  body{overflow:auto !important}
+}
 
 .overlay-loading{position:fixed;inset:0;background:rgba(3,17,38,.82);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
 .overlay-loading.show{display:flex}
@@ -499,13 +504,9 @@ function showSection(id) {
 
     setTimeout(() => {
       try {
-        const main = document.querySelector(".main");
-        if (main) {
-          const topInsideMain = target.offsetTop - 12;
-          main.scrollTo({ top: Math.max(0, topInsideMain), behavior: "smooth" });
-        }
-        const y = Math.max(0, window.pageYOffset + target.getBoundingClientRect().top - 12);
-        window.scrollTo({ top: y, behavior: "smooth" });
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        const top = window.pageYOffset || document.documentElement.scrollTop || 0;
+        window.scrollTo({ top: Math.max(0, top - 12), behavior: "smooth" });
       } catch (e) {}
     }, 140);
   }
@@ -2118,15 +2119,11 @@ document.addEventListener("click", function(ev) {
 
   setTimeout(() => {
     try {
-      const main = document.querySelector(".main");
       const active = document.querySelector(".main .card:not(.hidden)");
-      if (active && main) {
-        const topInsideMain = active.offsetTop - 12;
-        main.scrollTo({ top: Math.max(0, topInsideMain), behavior: "smooth" });
-      }
       if (active) {
-        const y = Math.max(0, window.pageYOffset + active.getBoundingClientRect().top - 12);
-        window.scrollTo({ top: y, behavior: "smooth" });
+        active.scrollIntoView({ behavior: "smooth", block: "start" });
+        const top = window.pageYOffset || document.documentElement.scrollTop || 0;
+        window.scrollTo({ top: Math.max(0, top - 12), behavior: "smooth" });
       }
     } catch (e) {}
   }, 180);
