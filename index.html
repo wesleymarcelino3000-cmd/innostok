@@ -473,14 +473,19 @@ function showSection(id) {
       try { renderProdutos(); } catch(e){}
     }, 100);
   }
+
   hideAllSections();
   const target = byId(id);
 
   if (id === "estoqueView") renderEstoqueCompleto();
   if (id === "historicoView") renderHistorico();
+  if (id === "produtoHistoricoView" && typeof renderHistoricoProduto === "function") renderHistoricoProduto();
+  if (id === "graficosView") {
+    try { aplicarPermissaoGraficos(); } catch(e) {}
+    try { preencherSelectGraficoProdutos(); } catch(e) {}
+    try { renderGraficosSistema(); } catch(e) {}
+  }
   if (id === "filaEtiquetas") renderFilaEtiquetas();
-  if (id === "produtoHistoricoView") renderHistoricoProduto();
-  if (id === "graficosView") { aplicarPermissaoGraficos(); preencherSelectGraficoProdutos(); renderGraficosSistema(); }
   if (id === "users") {
     applyUserPermissions();
     renderUsuarios();
@@ -494,6 +499,11 @@ function showSection(id) {
 
     setTimeout(() => {
       try {
+        const main = document.querySelector(".main");
+        if (main) {
+          const topInsideMain = target.offsetTop - 12;
+          main.scrollTo({ top: Math.max(0, topInsideMain), behavior: "smooth" });
+        }
         const y = Math.max(0, window.pageYOffset + target.getBoundingClientRect().top - 12);
         window.scrollTo({ top: y, behavior: "smooth" });
       } catch (e) {}
@@ -2105,9 +2115,15 @@ function renderGraficosSistema() {
 document.addEventListener("click", function(ev) {
   const btn = ev.target.closest(".sidebar button");
   if (!btn) return;
+
   setTimeout(() => {
     try {
+      const main = document.querySelector(".main");
       const active = document.querySelector(".main .card:not(.hidden)");
+      if (active && main) {
+        const topInsideMain = active.offsetTop - 12;
+        main.scrollTo({ top: Math.max(0, topInsideMain), behavior: "smooth" });
+      }
       if (active) {
         const y = Math.max(0, window.pageYOffset + active.getBoundingClientRect().top - 12);
         window.scrollTo({ top: y, behavior: "smooth" });
