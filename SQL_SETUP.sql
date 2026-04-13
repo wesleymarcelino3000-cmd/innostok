@@ -14,6 +14,7 @@ create table if not exists public.products (
   category text,
   price numeric default 0,
   stock integer default 0,
+  stock_min integer default 0,
   internal_code text unique not null,
   stock_label text unique not null,
   created_at timestamptz default now()
@@ -51,3 +52,6 @@ create table if not exists public.pending_labels (
 );
 
 alter table public.pending_labels disable row level security;
+
+
+alter table public.products add column if not exists stock_min integer default 0;
