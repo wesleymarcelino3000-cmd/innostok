@@ -8,7 +8,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{--bg1:#020617;--bg2:#0f172a;--bg3:#1e3a8a;--blue:#2563eb;--sidebar:#031126}
 *{box-sizing:border-box}
@@ -82,12 +81,7 @@ th{background:#f8fafc}
     margin:0 !important;
   }
 }
-@media(max-width:1100px){
-  .layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}
-  .main{padding:14px;overflow:visible !important;height:auto !important}
-  .sidebar{position:relative !important;top:auto !important;min-height:auto !important}
-  body{overflow:auto !important}
-}
+@media(max-width:1100px){.layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}.main{padding:14px}}
 
 .overlay-loading{position:fixed;inset:0;background:rgba(3,17,38,.82);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
 .overlay-loading.show{display:flex}
@@ -104,59 +98,6 @@ th{background:#f8fafc}
 @keyframes sectionFadeSlide{
   0%{opacity:0;transform:translateY(14px)}
   100%{opacity:1;transform:translateY(0)}
-}
-
-
-.hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
-@media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
-
-
-.edit-modal-overlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
-}
-.edit-modal-overlay.show{display:flex}
-.edit-modal{
-  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
-  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
-  box-shadow:0 30px 90px rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.55);
-}
-.edit-modal-top{
-  padding:24px 26px 18px;
-  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
-  color:#fff;
-}
-.edit-modal-top h3{margin:0;font-size:28px}
-.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
-.edit-modal-body{padding:22px 24px 24px}
-.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
-.edit-field input,.edit-field select{
-  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
-  background:#fff; font:inherit; outline:none; transition:.18s ease;
-  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
-}
-.edit-field input:focus,.edit-field select:focus{
-  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
-}
-.edit-highlight{
-  margin-bottom:18px; padding:14px 16px; border-radius:18px;
-  background:linear-gradient(135deg,#eff6ff,#dbeafe);
-  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
-}
-.edit-actions{
-  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
-}
-.edit-actions button{
-  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
-}
-.edit-cancel{background:#e2e8f0;color:#0f172a}
-.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
-@media(max-width:800px){
-  .edit-grid{grid-template-columns:1fr}
-  .edit-modal-top h3{font-size:24px}
-  .edit-actions button{width:100%}
 }
 
 </style>
@@ -194,7 +135,6 @@ th{background:#f8fafc}
       <button id="btnVerEstoque" onclick="showSection('estoqueView'); return false;">Ver estoque</button>
       <button id="btnExportarExcel" onclick="exportarPlanilha()">Exportar Excel</button>
       <button id="historyBtn" class="hidden" onclick="showSection('historicoView'); return false;">Histórico</button>
-      <button id="btnGraficos" class="hidden" onclick="showSection('graficosView'); return false;">Gráficos</button>
       <button onclick="showSection('etiquetas'); return false;">Etiquetas de estoque</button>
       <button onclick="showSection('filaEtiquetas'); return false;">Fila de etiquetas</button>
       <button id="btnScanner" onclick="showSection('scannerMobile'); return false;">Scanner no celular</button>
@@ -252,7 +192,7 @@ th{background:#f8fafc}
           <div><label>Código de barras</label><input class="app-input" id="codigoBarras"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
-          <div><label>Categoria</label><input class="app-input" id="categoria"></div>
+          <div><label>Categoria</label><select class="app-input" id="categoria"></select></div>
           <div><label>Preço</label><input class="app-input" id="preco" type="number" min="0" step="0.01"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
@@ -329,39 +269,6 @@ th{background:#f8fafc}
         </div>
       </div>
 
-      
-      <div id="graficosView" class="card hidden">
-        <h3>Gráficos do sistema</h3>
-        <div class="warnbox hidden" id="graficosBlocked">Somente admin pode ver os gráficos.</div>
-
-        <div id="graficosAdminArea">
-          <div class="form-row" style="margin-bottom:12px">
-            <div><label>Data inicial</label><input class="app-input" id="grafDataInicio" type="date" onchange="renderGraficosSistema()"></div>
-            <div><label>Data final</label><input class="app-input" id="grafDataFim" type="date" onchange="renderGraficosSistema()"></div>
-          </div>
-
-          <div class="form-row" style="margin-bottom:12px">
-            <div><label>Produto</label><select class="app-input" id="grafProduto" onchange="renderGraficosSistema()"></select></div>
-            <div><label>Visualização</label><select class="app-input" id="grafTipo" onchange="renderGraficosSistema()"><option value="dia">Por dia</option><option value="semana">Por semana</option><option value="mes">Por mês</option></select></div>
-          </div>
-
-          <div class="form-row" style="margin-bottom:12px">
-            <div class="card" style="box-shadow:none;border:1px solid #e5e7eb;margin:0">
-              <div><b>Total de entradas:</b> <span id="grafTotalEntradas">0</span></div>
-              <div style="margin-top:6px"><b>Total de saídas:</b> <span id="grafTotalSaidas">0</span></div>
-            </div>
-            <div class="card" style="box-shadow:none;border:1px solid #e5e7eb;margin:0">
-              <div><b>Saldo:</b> <span id="grafSaldo">0</span></div>
-              <div style="margin-top:6px"><b>Produto selecionado:</b> <span id="grafProdutoSelecionado">Todos</span></div>
-            </div>
-          </div>
-
-          <div class="card" style="box-shadow:none;border:1px solid #e5e7eb">
-            <canvas id="graficoSistemaCanvas" height="120"></canvas>
-          </div>
-        </div>
-      </div>
-
       <div id="etiquetas" class="card hidden">
         <h3>Etiquetas de estoque</h3>
         <div class="form-row" style="margin-bottom:12px">
@@ -407,67 +314,7 @@ th{background:#f8fafc}
         </div>
       </div>
 
-
-
-<div id="produtoHistoricoView" class="card hidden">
-  <h3>Histórico visual por produto</h3>
-  <div id="produtoHistoricoResumo" class="notice hidden"></div>
-
-  <div class="hist-filters">
-    <div>
-      <label>Data inicial</label>
-      <input class="app-input" id="histProdutoDataInicio" type="date" onchange="renderHistoricoProduto()">
-    </div>
-    <div>
-      <label>Data final</label>
-      <input class="app-input" id="histProdutoDataFim" type="date" onchange="renderHistoricoProduto()">
-    </div>
-    <div>
-      <label>Agrupamento</label>
-      <select class="app-input" id="histProdutoAgrupamento" onchange="renderHistoricoProduto()">
-        <option value="dia">Por dia</option>
-        <option value="semana">Por semana</option>
-        <option value="mes">Por mês</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="form-row" style="margin-bottom:12px">
-    <div class="card" style="box-shadow:none;border:1px solid #e5e7eb;margin:0">
-      <div><b>Produto:</b> <span id="histProdutoNome">-</span></div>
-      <div style="margin-top:6px"><b>Categoria:</b> <span id="histProdutoCategoria">-</span></div>
-      <div style="margin-top:6px"><b>Estoque atual:</b> <span id="histProdutoEstoque">0</span></div>
-    </div>
-    <div class="card" style="box-shadow:none;border:1px solid #e5e7eb;margin:0">
-      <div><b>Total de entradas:</b> <span id="histProdutoEntradas">0</span></div>
-      <div style="margin-top:6px"><b>Total de saídas:</b> <span id="histProdutoSaidas">0</span></div>
-      <div style="margin-top:6px"><b>Saldo movimentado:</b> <span id="histProdutoSaldo">0</span></div>
-    </div>
-  </div>
-
-  <div class="card" style="box-shadow:none;border:1px solid #e5e7eb">
-    <canvas id="produtoHistoricoChart" height="120"></canvas>
-  </div>
-
-  <div class="wrap" style="margin-top:16px">
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Usuário</th>
-          <th>Tipo</th>
-          <th>Origem</th>
-          <th>Quantidade</th>
-          <th>Detalhes</th>
-        </tr>
-      </thead>
-      <tbody id="produtoHistoricoTabela"></tbody>
-    </table>
-  </div>
-</div>
-
 <div id="scannerMobile" class="card hidden">
-
         <h3>Scanner no celular</h3>
         <div style="color:#6b7280;margin-bottom:12px">Android: prefira Chrome. iPhone: prefira Safari. Em qualquer navegador, a entrada manual continua disponível.</div>
         <div class="form-row">
@@ -489,53 +336,6 @@ th{background:#f8fafc}
   </div>
 </div>
 
-
-<div id="editModalOverlay" class="edit-modal-overlay">
-  <div class="edit-modal">
-    <div class="edit-modal-top">
-      <h3>Editar produto</h3>
-      <div class="sub">Atualize os dados do produto com uma experiência mais profissional</div>
-    </div>
-    <div class="edit-modal-body">
-      <div class="edit-highlight">
-        Produto em edição: <span id="editModalProdutoAtual">-</span>
-      </div>
-
-      <div class="edit-grid">
-        <div class="edit-field">
-          <label>Nome do produto</label>
-          <input id="editNomePremium" type="text" placeholder="Digite o nome do produto">
-        </div>
-        <div class="edit-field">
-          <label>Código de barras</label>
-          <input id="editCodigoPremium" type="text" placeholder="Digite o código de barras">
-        </div>
-        <div class="edit-field">
-          <label>Categoria</label>
-          <select id="editCategoriaPremium"></select>
-        </div>
-        <div class="edit-field">
-          <label>Quantidade em estoque</label>
-          <input id="editQtdPremium" type="number" min="0" placeholder="0">
-        </div>
-        <div class="edit-field">
-          <label>Preço</label>
-          <input id="editPrecoPremium" type="number" min="0" step="0.01" placeholder="0,00">
-        </div>
-        <div class="edit-field">
-          <label>Código interno</label>
-          <input id="editCodigoInternoPremium" type="text" disabled>
-        </div>
-      </div>
-
-      <div class="edit-actions">
-        <button class="edit-cancel" onclick="fecharModalEdicaoPremium()">Cancelar</button>
-        <button class="edit-save" onclick="salvarEdicaoPremium()">Salvar alterações</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
 let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
@@ -545,87 +345,7 @@ let ultimoCodigoLido = "";
 let ultimoProdutoIndex = -1;
 let audioCtx = null;
 
-let produtoEditandoPremiumIndex = null;
 
-const CATEGORIAS = [
-  "Suplementos",
-  "Cosméticos",
-  "Séruns",
-  "Acessórios",
-  "Outros"
-];
-
-function preencherCategorias() {
-  const select = document.getElementById("editCategoriaPremium");
-  if (!select) return;
-
-  select.innerHTML = CATEGORIAS.map(cat =>
-    `<option value="${cat}">${cat}</option>`
-  ).join("");
-}
-
-
-function abrirModalEdicaoPremium(i) {
-  if (isOperador()) return alert("Operador não pode editar produto.");
-  const p = db.products[i];
-  preencherCategorias();
-  if (!p) return;
-
-  produtoEditandoPremiumIndex = i;
-  byId("editModalProdutoAtual").textContent = p.name || "-";
-  byId("editNomePremium").value = p.name || "";
-  byId("editCodigoPremium").value = p.barcode || "";
-  document.getElementById("editCategoriaPremium").value = p.category || "";
-  byId("editQtdPremium").value = Number(p.stock || 0);
-  byId("editPrecoPremium").value = Number(p.price || 0);
-  byId("editCodigoInternoPremium").value = p.internal_code || "";
-
-  byId("editModalOverlay").classList.add("show");
-}
-
-function fecharModalEdicaoPremium() {
-  produtoEditandoPremiumIndex = null;
-  byId("editModalOverlay")?.classList.remove("show");
-}
-
-async function salvarEdicaoPremium() {
-  if (produtoEditandoPremiumIndex === null || produtoEditandoPremiumIndex < 0) return;
-
-  const p = db.products[produtoEditandoPremiumIndex];
-  if (!p) return;
-
-  const novoNome = byId("editNomePremium").value.trim();
-  const novoCodigoBarras = byId("editCodigoPremium").value.trim();
-  const novaCategoria = byId("editCategoriaPremium").value.trim();
-  const novaQtd = Number(byId("editQtdPremium").value || 0);
-  const novoPreco = Number(byId("editPrecoPremium").value || 0);
-
-  if (!novoNome) return alert("Informe o nome do produto.");
-
-  await sb.from('products').update({
-    name: novoNome,
-    barcode: novoCodigoBarras,
-    category: novaCategoria,
-    stock: Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
-    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0)
-  }).eq('id', p.id);
-
-  await registrarHistorico(
-    'editar_produto',
-    'produtos',
-    novoNome,
-    Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
-    'Categoria: ' + (novaCategoria || '')
-  );
-
-  fecharModalEdicaoPremium();
-  await loadAll();
-  render();
-}
-
-let graficoSistemaChart = null;
-let currentProductHistoryId = null;
-let productHistoryChart = null;
 function byId(id) { return document.getElementById(id); }
 function saveSession() { localStorage.setItem("inno_stock_online_session_user", db.sessionUser || ""); }
 function loadSession() { db.sessionUser = localStorage.getItem("inno_stock_online_session_user") || null; }
@@ -642,7 +362,7 @@ function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code1
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 
 function hideAllSections() {
-  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -653,18 +373,11 @@ function showSection(id) {
       try { renderProdutos(); } catch(e){}
     }, 100);
   }
-
   hideAllSections();
   const target = byId(id);
 
   if (id === "estoqueView") renderEstoqueCompleto();
   if (id === "historicoView") renderHistorico();
-  if (id === "produtoHistoricoView" && typeof renderHistoricoProduto === "function") renderHistoricoProduto();
-  if (id === "graficosView") {
-    try { aplicarPermissaoGraficos(); } catch(e) {}
-    try { preencherSelectGraficoProdutos(); } catch(e) {}
-    try { renderGraficosSistema(); } catch(e) {}
-  }
   if (id === "filaEtiquetas") renderFilaEtiquetas();
   if (id === "users") {
     applyUserPermissions();
@@ -679,9 +392,8 @@ function showSection(id) {
 
     setTimeout(() => {
       try {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-        const top = window.pageYOffset || document.documentElement.scrollTop || 0;
-        window.scrollTo({ top: Math.max(0, top - 12), behavior: "smooth" });
+        const y = Math.max(0, window.pageYOffset + target.getBoundingClientRect().top - 12);
+        window.scrollTo({ top: y, behavior: "smooth" });
       } catch (e) {}
     }, 140);
   }
@@ -915,59 +627,6 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
     display: block;
     margin: 0 auto 6px auto;
   }
-
-.hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
-@media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
-
-
-.edit-modal-overlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
-}
-.edit-modal-overlay.show{display:flex}
-.edit-modal{
-  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
-  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
-  box-shadow:0 30px 90px rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.55);
-}
-.edit-modal-top{
-  padding:24px 26px 18px;
-  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
-  color:#fff;
-}
-.edit-modal-top h3{margin:0;font-size:28px}
-.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
-.edit-modal-body{padding:22px 24px 24px}
-.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
-.edit-field input,.edit-field select{
-  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
-  background:#fff; font:inherit; outline:none; transition:.18s ease;
-  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
-}
-.edit-field input:focus,.edit-field select:focus{
-  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
-}
-.edit-highlight{
-  margin-bottom:18px; padding:14px 16px; border-radius:18px;
-  background:linear-gradient(135deg,#eff6ff,#dbeafe);
-  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
-}
-.edit-actions{
-  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
-}
-.edit-actions button{
-  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
-}
-.edit-cancel{background:#e2e8f0;color:#0f172a}
-.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
-@media(max-width:800px){
-  .edit-grid{grid-template-columns:1fr}
-  .edit-modal-top h3{font-size:24px}
-  .edit-actions button{width:100%}
-}
-
 </style>
 </head>
 <body>
@@ -1113,6 +772,7 @@ async function loadAll() {
   await loadPendingLabels();
   try { preencherSelectProduto(); } catch(e) {}
   try { renderEtiquetas(); } catch(e) {}
+  try { preencherCategorias(); } catch(e) {}
   db.lastInternalCode = db.products.reduce((m, p) => {
     const n = Number(String(p.internal_code || '').replace('INT-',''));
     return Number.isFinite(n) ? Math.max(m, n) : m;
@@ -1202,7 +862,6 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
     setVisible("historyBtn", true);
-    setVisible("btnGraficos", true);
   } else if (conferente) {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -1214,7 +873,6 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
     setVisible("historyBtn", false);
-    setVisible("btnGraficos", false);
   } else if (operador) {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -1226,8 +884,6 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
     setVisible("historyBtn", false);
-    setVisible("btnGraficos", false);
-    setVisible("btnGraficos", false);
   } else {
     setVisible("btnUsuarios", false);
     setVisible("btnVerEstoque", true);
@@ -1239,8 +895,6 @@ function applyUserPermissions() {
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
     setVisible("historyBtn", false);
-    setVisible("btnGraficos", false);
-    setVisible("btnGraficos", false);
   }
 
   if (admin && u) {
@@ -1429,7 +1083,6 @@ function renderEtiquetas() {
 function gerarEtiqueta(i) {
   try {
     const p = db.products[i];
-  preencherCategorias();
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
@@ -1505,59 +1158,6 @@ function gerarEtiqueta(i) {
     margin-top: 3px;
     word-break: break-all;
   }
-
-.hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
-@media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
-
-
-.edit-modal-overlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
-}
-.edit-modal-overlay.show{display:flex}
-.edit-modal{
-  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
-  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
-  box-shadow:0 30px 90px rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.55);
-}
-.edit-modal-top{
-  padding:24px 26px 18px;
-  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
-  color:#fff;
-}
-.edit-modal-top h3{margin:0;font-size:28px}
-.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
-.edit-modal-body{padding:22px 24px 24px}
-.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
-.edit-field input,.edit-field select{
-  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
-  background:#fff; font:inherit; outline:none; transition:.18s ease;
-  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
-}
-.edit-field input:focus,.edit-field select:focus{
-  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
-}
-.edit-highlight{
-  margin-bottom:18px; padding:14px 16px; border-radius:18px;
-  background:linear-gradient(135deg,#eff6ff,#dbeafe);
-  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
-}
-.edit-actions{
-  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
-}
-.edit-actions button{
-  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
-}
-.edit-cancel{background:#e2e8f0;color:#0f172a}
-.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
-@media(max-width:800px){
-  .edit-grid{grid-template-columns:1fr}
-  .edit-modal-top h3{font-size:24px}
-  .edit-actions button{width:100%}
-}
-
 </style>
 </head>
 <body>
@@ -1721,10 +1321,23 @@ async function excluirProduto(i) {
   await loadAll();
   render();
 }
-function editarProduto(i) {
-  abrirModalEdicaoPremium(i);
+async function editarProduto(i) {
+  if (isOperador()) return alert("Operador não pode editar produto.");
+  const p = db.products[i];
+  const novoNome = prompt("Editar nome:", p.name);
+  const novoCodigoBarras = prompt("Editar código de barras:", p.barcode || "");
+  const novaQtd = prompt("Editar quantidade:", p.stock);
+  const novoPreco = prompt("Editar preço:", p.price);
+  await sb.from('products').update({
+    name: novoNome ?? p.name,
+    barcode: novoCodigoBarras ?? p.barcode,
+    stock: Number(novaQtd ?? p.stock),
+    price: Number(novoPreco ?? p.price)
+  }).eq('id', p.id);
+  await registrarHistorico('editar_produto', 'produtos', novoNome ?? p.name, Number(novaQtd ?? p.stock), 'Produto atualizado');
+  await loadAll();
+  render();
 }
-
 function render() {
   if (byId("lista")) {
     byId("lista").innerHTML = db.products.map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td>${(Number(p.price || 0)).toFixed(2)}</td><td><button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="secondary-action" onclick="excluirProduto(${i})">Excluir</button></td></tr>`).join("");
@@ -1739,8 +1352,7 @@ function render() {
   try { renderEstoqueCompleto(); } catch(e) {}
   try { renderHistorico(); } catch(e) {}
   try { renderFilaEtiquetas(); } catch(e) {}
-  try { preencherSelectGraficoProdutos(); } catch(e) {}
-  try { aplicarPermissaoGraficos(); } catch(e) {}
+  try { preencherCategorias(); } catch(e) {}
 }
 
 async function exportarPlanilha() {
@@ -1903,7 +1515,6 @@ function renderEstoqueCompleto() {
   const tbody = byId("listaEstoqueCompleto");
   if (!tbody) return;
   const canManage = !isOperador();
-  const canSeeHistory = isAdmin();
   const rows = db.products.map((p, i) => `
     <tr>
       <td>${p.name || ""}</td>
@@ -1912,7 +1523,7 @@ function renderEstoqueCompleto() {
       <td>${p.stock ?? 0}</td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
-      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""} ${canSeeHistory ? `<button class="action" onclick="abrirHistoricoProduto(${i})">Ver histórico</button>` : ""}</td>
+      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""}</td>
     </tr>
   `).join("");
   tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
@@ -2088,302 +1699,18 @@ function renderHistorico() {
 }
 
 
-
-
-function normalizarDataDia(v) {
-  try {
-    const d = new Date(v);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleDateString('pt-BR');
-  } catch (e) {
-    return "";
-  }
-}
-
-function formatarSemana(data) {
-  const d = new Date(data);
-  if (isNaN(d.getTime())) return "Sem data";
-  const primeiroDiaAno = new Date(d.getFullYear(), 0, 1);
-  const dias = Math.floor((d - primeiroDiaAno) / 86400000);
-  const semana = Math.ceil((dias + primeiroDiaAno.getDay() + 1) / 7);
-  return `Sem ${String(semana).padStart(2,"0")}/${d.getFullYear()}`;
-}
-
-function formatarMes(data) {
-  const d = new Date(data);
-  if (isNaN(d.getTime())) return "Sem data";
-  return String(d.toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' }));
-}
-
-function agruparChaveData(data, modo) {
-  if (modo === 'semana') return formatarSemana(data);
-  if (modo === 'mes') return formatarMes(data);
-  return normalizarDataDia(data) || "Sem data";
-}
-
-function movimentosDoProduto(p) {
-  return (db.movements || []).filter(m =>
-    (p.id != null && Number(m.product_id) === Number(p.id)) ||
-    String(m.product_name || "").trim().toLowerCase() === String(p.name || "").trim().toLowerCase()
-  );
-}
-
-function abrirHistoricoProduto(i) {
-  if (!isAdmin()) return alert("Somente admin pode ver o histórico visual por produto.");
-  const p = db.products[i];
-  preencherCategorias();
-  if (!p) return;
-  currentProductHistoryId = p.id;
-  showSection('produtoHistoricoView');
-  renderHistoricoProduto();
-}
-
-function calcularTendenciaLinear(valores) {
-  if (!valores || !valores.length) return [];
-  const n = valores.length;
-  if (n === 1) return [valores[0]];
-  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-  for (let i = 0; i < n; i++) {
-    const x = i + 1;
-    const y = Number(valores[i] || 0);
-    sumX += x;
-    sumY += y;
-    sumXY += x * y;
-    sumXX += x * x;
-  }
-  const m = ((n * sumXY) - (sumX * sumY)) / ((n * sumXX) - (sumX * sumX) || 1);
-  const b = (sumY - m * sumX) / n;
-  return Array.from({ length: n }, (_, i) => Number((m * (i + 1) + b).toFixed(2)));
-}
-
-function renderHistoricoProduto() {
-  if (!isAdmin()) return;
-  const p = (db.products || []).find(x => Number(x.id) === Number(currentProductHistoryId));
-  const tbody = byId("produtoHistoricoTabela");
-  if (!p || !tbody) return;
-
-  const inicio = byId("histProdutoDataInicio")?.value || "";
-  const fim = byId("histProdutoDataFim")?.value || "";
-  const agrupamento = byId("histProdutoAgrupamento")?.value || "dia";
-
-  let itens = movimentosDoProduto(p).sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
-  if (inicio) {
-    const ini = new Date(inicio + "T00:00:00");
-    itens = itens.filter(m => m.created_at && new Date(m.created_at) >= ini);
-  }
-  if (fim) {
-    const fimDate = new Date(fim + "T23:59:59");
-    itens = itens.filter(m => m.created_at && new Date(m.created_at) <= fimDate);
-  }
-
-  const totalEntradas = itens
-    .filter(m => ['entrada','entrada_manual','entrada_produto','criar_produto'].includes(String(m.type || '').toLowerCase()))
-    .reduce((s,m) => s + Number(m.quantity || 0), 0);
-
-  const totalSaidas = itens
-    .filter(m => ['saida','baixa_manual','baixa_scanner'].includes(String(m.type || '').toLowerCase()))
-    .reduce((s,m) => s + Number(m.quantity || 0), 0);
-
-  byId("histProdutoNome").textContent = p.name || "-";
-  byId("histProdutoCategoria").textContent = p.category || "-";
-  byId("histProdutoEstoque").textContent = Number(p.stock || 0);
-  byId("histProdutoEntradas").textContent = totalEntradas;
-  byId("histProdutoSaidas").textContent = totalSaidas;
-  byId("histProdutoSaldo").textContent = totalEntradas - totalSaidas;
-
-  const resumo = byId("produtoHistoricoResumo");
-  if (resumo) {
-    resumo.textContent = "Período analisado: " + (inicio ? new Date(inicio + "T00:00:00").toLocaleDateString('pt-BR') : "início") + " até " + (fim ? new Date(fim + "T00:00:00").toLocaleDateString('pt-BR') : "hoje") + ".";
-    resumo.classList.remove("hidden");
-  }
-
-  const agrupado = {};
-  const ordemDatas = {};
-  itens.forEach(m => {
-    const chave = agruparChaveData(m.created_at, agrupamento);
-    if (!agrupado[chave]) agrupado[chave] = { entrada: 0, saida: 0 };
-    if (!ordemDatas[chave]) ordemDatas[chave] = new Date(m.created_at || 0).getTime();
-    const tipo = String(m.type || '').toLowerCase();
-    const qtd = Number(m.quantity || 0);
-    if (['entrada','entrada_manual','entrada_produto','criar_produto'].includes(tipo)) agrupado[chave].entrada += qtd;
-    if (['saida','baixa_manual','baixa_scanner'].includes(tipo)) agrupado[chave].saida += qtd;
-  });
-
-  const labels = Object.keys(agrupado).sort((a,b) => (ordemDatas[a] || 0) - (ordemDatas[b] || 0));
-  const entradas = labels.map(d => agrupado[d].entrada);
-  const saidas = labels.map(d => agrupado[d].saida);
-  const tendencia = calcularTendenciaLinear(saidas);
-
-  const canvas = byId("produtoHistoricoChart");
-  if (canvas && window.Chart) {
-    if (productHistoryChart) {
-      try { productHistoryChart.destroy(); } catch(e) {}
-    }
-    productHistoryChart = new Chart(canvas, {
-      data: {
-        labels,
-        datasets: [
-          { type: 'bar', label: 'Entradas', data: entradas, backgroundColor: 'rgba(22,163,74,0.7)', borderColor: 'rgba(22,163,74,1)', borderWidth: 1 },
-          { type: 'bar', label: 'Saídas', data: saidas, backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgba(239,68,68,1)', borderWidth: 1 },
-          { type: 'line', label: 'Tendência de saídas', data: tendencia, borderColor: 'rgba(37,99,235,1)', backgroundColor: 'rgba(37,99,235,0.15)', tension: 0.3, fill: false, borderWidth: 2 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { position: 'top' }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  const rows = itens.map(m => {
-    const data = m.created_at ? new Date(m.created_at).toLocaleString('pt-BR') : "";
-    return `
-      <tr>
-        <td>${data}</td>
-        <td>${m.username || ""}</td>
-        <td>${m.type || ""}</td>
-        <td>${m.source || ""}</td>
-        <td>${m.quantity ?? ""}</td>
-        <td>${m.details || ""}</td>
-      </tr>
-    `;
-  }).join("");
-
-  tbody.innerHTML = rows || `<tr><td colspan="6">Nenhum movimento encontrado para este produto no período.</td></tr>`;
-}
-
-
-
-function preencherSelectGraficoProdutos() {
-  const sel = byId("grafProduto");
-  if (!sel) return;
-  const atual = sel.value || "";
-  sel.innerHTML = '<option value="">Todos os produtos</option>' + (db.products || []).map(p => `<option value="${p.id}">${p.name}</option>`).join("");
-  if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
-}
-
-function chaveAgrupamentoData(data, tipo) {
-  const d = new Date(data);
-  if (isNaN(d.getTime())) return "Sem data";
-  if (tipo === "mes") return d.toLocaleDateString('pt-BR', { month: '2-digit', year: 'numeric' });
-  if (tipo === "semana") {
-    const primeiroDiaAno = new Date(d.getFullYear(), 0, 1);
-    const dias = Math.floor((d - primeiroDiaAno) / 86400000);
-    const semana = Math.ceil((dias + primeiroDiaAno.getDay() + 1) / 7);
-    return `Sem ${String(semana).padStart(2,'0')}/${d.getFullYear()}`;
-  }
-  return d.toLocaleDateString('pt-BR');
-}
-
-function aplicarPermissaoGraficos() {
-  const blocked = byId("graficosBlocked");
-  const area = byId("graficosAdminArea");
-  const admin = isAdmin();
-  if (blocked) blocked.style.display = admin ? "none" : "block";
-  if (area) area.style.display = admin ? "block" : "none";
-}
-
-function renderGraficosSistema() {
-  aplicarPermissaoGraficos();
-  if (!isAdmin()) return;
-
-  const inicio = byId("grafDataInicio")?.value || "";
-  const fim = byId("grafDataFim")?.value || "";
-  const produtoId = byId("grafProduto")?.value || "";
-  const tipo = byId("grafTipo")?.value || "dia";
-
-  let itens = [...(db.movements || [])];
-
-  if (inicio) {
-    const ini = new Date(inicio + "T00:00:00");
-    itens = itens.filter(m => m.created_at && new Date(m.created_at) >= ini);
-  }
-  if (fim) {
-    const fimDate = new Date(fim + "T23:59:59");
-    itens = itens.filter(m => m.created_at && new Date(m.created_at) <= fimDate);
-  }
-  if (produtoId) {
-    itens = itens.filter(m => Number(m.product_id) === Number(produtoId));
-  }
-
-  const agrupado = {};
-  itens.forEach(m => {
-    const chave = chaveAgrupamentoData(m.created_at, tipo);
-    if (!agrupado[chave]) agrupado[chave] = { entrada: 0, saida: 0, order: new Date(m.created_at || 0).getTime() };
-    const t = String(m.type || "").toLowerCase();
-    const q = Number(m.quantity || 0);
-    if (['entrada','entrada_manual','entrada_produto','criar_produto'].includes(t)) agrupado[chave].entrada += q;
-    if (['saida','baixa_manual','baixa_scanner'].includes(t)) agrupado[chave].saida += q;
-  });
-
-  const labels = Object.keys(agrupado).sort((a,b) => (agrupado[a].order || 0) - (agrupado[b].order || 0));
-  const entradas = labels.map(k => agrupado[k].entrada);
-  const saidas = labels.map(k => agrupado[k].saida);
-
-  const totalEntradas = entradas.reduce((a,b) => a + b, 0);
-  const totalSaidas = saidas.reduce((a,b) => a + b, 0);
-
-  if (byId("grafTotalEntradas")) byId("grafTotalEntradas").textContent = totalEntradas;
-  if (byId("grafTotalSaidas")) byId("grafTotalSaidas").textContent = totalSaidas;
-  if (byId("grafSaldo")) byId("grafSaldo").textContent = totalEntradas - totalSaidas;
-
-  const nomeProduto = produtoId ? ((db.products || []).find(p => Number(p.id) === Number(produtoId))?.name || "Selecionado") : "Todos";
-  if (byId("grafProdutoSelecionado")) byId("grafProdutoSelecionado").textContent = nomeProduto;
-
-  const canvas = byId("graficoSistemaCanvas");
-  if (canvas && window.Chart) {
-    if (graficoSistemaChart) {
-      try { graficoSistemaChart.destroy(); } catch(e) {}
-    }
-    graficoSistemaChart = new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          { label: 'Entradas', data: entradas, backgroundColor: 'rgba(22,163,74,0.7)', borderColor: 'rgba(22,163,74,1)', borderWidth: 1 },
-          { label: 'Saídas', data: saidas, backgroundColor: 'rgba(239,68,68,0.7)', borderColor: 'rgba(239,68,68,1)', borderWidth: 1 }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true } }
-      }
-    });
-  }
-}
-
 document.addEventListener("click", function(ev) {
   const btn = ev.target.closest(".sidebar button");
   if (!btn) return;
-
   setTimeout(() => {
     try {
       const active = document.querySelector(".main .card:not(.hidden)");
       if (active) {
-        active.scrollIntoView({ behavior: "smooth", block: "start" });
-        const top = window.pageYOffset || document.documentElement.scrollTop || 0;
-        window.scrollTo({ top: Math.max(0, top - 12), behavior: "smooth" });
+        const y = Math.max(0, window.pageYOffset + active.getBoundingClientRect().top - 12);
+        window.scrollTo({ top: y, behavior: "smooth" });
       }
     } catch (e) {}
   }, 180);
-});
-
-
-document.addEventListener("keydown", function(ev){
-  if (ev.key === "Escape") fecharModalEdicaoPremium();
-});
-document.addEventListener("click", function(ev){
-  const overlay = byId("editModalOverlay");
-  if (overlay && ev.target === overlay) fecharModalEdicaoPremium();
 });
 
 bootstrap();
