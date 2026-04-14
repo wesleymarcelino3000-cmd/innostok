@@ -76,3 +76,11 @@ Correção adicional:
 
 Correção:
 - impressão da etiqueta restante da fila agora mostra o conteúdo em vez de página em branco.
+
+
+Atualização:
+- campo de estoque mínimo no cadastro de produto
+- edição de estoque mínimo no modal de editar produto
+- alerta visual em vermelho para produto no mínimo ou abaixo
+- aviso em janela para admin ao entrar no sistema
+- salvando estoque mínimo no Supabase
