@@ -163,11 +163,10 @@ th{background:#f8fafc}
 .status-ok{font-size:20px}
 .status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
 @keyframes criticalBlink{
-  0%{transform:scale(1);opacity:1}
-  50%{transform:scale(1.18);opacity:.25}
-  100%{transform:scale(1);opacity:1}
+0%{transform:scale(1);opacity:1}
+50%{transform:scale(1.2);opacity:.3}
+100%{transform:scale(1);opacity:1}
 }
-
 </style>
 </head>
 <body>
@@ -302,7 +301,7 @@ th{background:#f8fafc}
         <div style="color:#6b7280;margin-bottom:10px">Visualização completa do estoque.</div>
         <div class="wrap">
           <table>
-            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Status</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
             <tbody id="listaEstoqueCompleto"></tbody></table>
         </div>
       </div>
@@ -329,7 +328,7 @@ th{background:#f8fafc}
                 <th>Ação</th>
                 <th>Origem</th>
                 <th>Produto</th>
-                <th>Quantidade</th><th>Status</th>
+                <th>Quantidade</th>
                 <th>Detalhes</th>
               </tr>
             </thead>
@@ -466,7 +465,7 @@ th{background:#f8fafc}
           <th>Usuário</th>
           <th>Tipo</th>
           <th>Origem</th>
-          <th>Quantidade</th><th>Status</th>
+          <th>Quantidade</th>
           <th>Detalhes</th>
         </tr>
       </thead>
@@ -981,11 +980,10 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
 .status-ok{font-size:20px}
 .status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
 @keyframes criticalBlink{
-  0%{transform:scale(1);opacity:1}
-  50%{transform:scale(1.18);opacity:.25}
-  100%{transform:scale(1);opacity:1}
+0%{transform:scale(1);opacity:1}
+50%{transform:scale(1.2);opacity:.3}
+100%{transform:scale(1);opacity:1}
 }
-
 </style>
 </head>
 <body>
@@ -1580,11 +1578,10 @@ function gerarEtiqueta(i) {
 .status-ok{font-size:20px}
 .status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
 @keyframes criticalBlink{
-  0%{transform:scale(1);opacity:1}
-  50%{transform:scale(1.18);opacity:.25}
-  100%{transform:scale(1);opacity:1}
+0%{transform:scale(1);opacity:1}
+50%{transform:scale(1.2);opacity:.3}
+100%{transform:scale(1);opacity:1}
 }
-
 </style>
 </head>
 <body>
@@ -1926,24 +1923,34 @@ async function exportarPlanilha() {
   URL.revokeObjectURL(a.href);
 }
 
+
 function renderEstoqueCompleto() {
   const tbody = byId("listaEstoqueCompleto");
   if (!tbody) return;
-  const canManage = !isOperador();
-  const canSeeHistory = isAdmin();
-  const rows = db.products.map((p, i) => `
+
+  const rows = db.products.map((p, i) => {
+    const baixo = Number(p?.stock || 0) <= Number(p?.min_stock || 0) && Number(p?.min_stock || 0) > 0;
+    const statusIcon = baixo ? "🔴" : "🟢";
+
+    return `
     <tr>
       <td>${p.name || ""}</td>
       <td>${p.barcode || ""}</td>
       <td>${p.category || ""}</td>
-      <td>${p.stock ?? 0}</td><td><span class="${baixo ? 'status-critical' : 'status-ok'}">${statusIcon}</span></td>
+      <td>${p.stock ?? 0}</td>
+      <td><span class="${baixo ? 'status-critical' : 'status-ok'}">${statusIcon}</span></td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
-      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""} ${canSeeHistory ? `<button class="action" onclick="abrirHistoricoProduto(${i})">Ver histórico</button>` : ""}</td>
-    </tr>
-  `).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
+      <td>
+        <button class="secondary-action" onclick="editarProduto(${i})">Editar</button>
+        <button class="danger" onclick="excluirProduto(${i})">Excluir</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  tbody.innerHTML = rows || `<tr><td colspan="8">Nenhum produto cadastrado.</td></tr>`;
 }
+
 
 
 
