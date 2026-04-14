@@ -248,7 +248,18 @@ th{background:#f8fafc}
           </div>
           <button class="action" style="margin-top:12px" onclick="criarUsuario()">Cadastrar usuário</button>
           <div class="wrap" style="margin-top:16px">
-            <table><thead><tr><th>Nome</th><th>Usuário</th><th>Nível</th><th>Ações</th></tr></thead><tbody id="listaUsuarios"></tbody><tbody id="listaProdutos"></tbody></table>
+            <table><thead>
+<tr>
+<th>Nome</th>
+<th>Código de barras</th>
+<th>Categoria</th>
+<th>Quantidade</th>
+<th>Status</th>
+<th>Preço</th>
+<th>Código interno</th>
+<th>Ações</th>
+</tr>
+</thead><tbody id="listaUsuarios"></tbody><tbody id="listaProdutos"></tbody></table>
           </div>
         </div>
       </div>
@@ -301,7 +312,18 @@ th{background:#f8fafc}
         <div style="color:#6b7280;margin-bottom:10px">Visualização completa do estoque.</div>
         <div class="wrap">
           <table>
-            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
+            <thead>
+<tr>
+<th>Nome</th>
+<th>Código de barras</th>
+<th>Categoria</th>
+<th>Quantidade</th>
+<th>Status</th>
+<th>Preço</th>
+<th>Código interno</th>
+<th>Ações</th>
+</tr>
+</thead>
             <tbody id="listaEstoqueCompleto"></tbody></table>
         </div>
       </div>
@@ -322,16 +344,17 @@ th{background:#f8fafc}
         <div class="wrap">
           <table>
             <thead>
-              <tr>
-                <th>Data</th>
-                <th>Usuário</th>
-                <th>Ação</th>
-                <th>Origem</th>
-                <th>Produto</th>
-                <th>Quantidade</th>
-                <th>Detalhes</th>
-              </tr>
-            </thead>
+<tr>
+<th>Nome</th>
+<th>Código de barras</th>
+<th>Categoria</th>
+<th>Quantidade</th>
+<th>Status</th>
+<th>Preço</th>
+<th>Código interno</th>
+<th>Ações</th>
+</tr>
+</thead>
             <tbody id="listaHistorico"></tbody>
           <tbody id="listaProdutos"></tbody></table>
         </div>
@@ -380,7 +403,18 @@ th{background:#f8fafc}
           <div><label>Tamanho</label><input class="app-input" value="100 x 150 mm" disabled></div><div></div>
         </div>
         <div class="wrap">
-          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody></table>
+          <table><thead>
+<tr>
+<th>Nome</th>
+<th>Código de barras</th>
+<th>Categoria</th>
+<th>Quantidade</th>
+<th>Status</th>
+<th>Preço</th>
+<th>Código interno</th>
+<th>Ações</th>
+</tr>
+</thead><tbody id="listaEtiquetas"></tbody></table>
         </div>
         <div id="printArea" class="hidden" style="margin-top:16px">
           <div id="labelSheet" class="label-sheet"></div>
@@ -399,14 +433,17 @@ th{background:#f8fafc}
         <div class="wrap">
           <table>
             <thead>
-              <tr>
-                <th>Data</th>
-                <th>Produto</th>
-                <th>Quantidade restante</th>
-                <th>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
+<tr>
+<th>Nome</th>
+<th>Código de barras</th>
+<th>Categoria</th>
+<th>Quantidade</th>
+<th>Status</th>
+<th>Preço</th>
+<th>Código interno</th>
+<th>Ações</th>
+</tr>
+</thead>
             <tbody id="listaFilaEtiquetas"></tbody>
           <tbody id="listaProdutos"></tbody></table>
         </div>
@@ -460,15 +497,17 @@ th{background:#f8fafc}
   <div class="wrap" style="margin-top:16px">
     <table>
       <thead>
-        <tr>
-          <th>Data</th>
-          <th>Usuário</th>
-          <th>Tipo</th>
-          <th>Origem</th>
-          <th>Quantidade</th>
-          <th>Detalhes</th>
-        </tr>
-      </thead>
+<tr>
+<th>Nome</th>
+<th>Código de barras</th>
+<th>Categoria</th>
+<th>Quantidade</th>
+<th>Status</th>
+<th>Preço</th>
+<th>Código interno</th>
+<th>Ações</th>
+</tr>
+</thead>
       <tbody id="produtoHistoricoTabela"></tbody>
     </table>
   </div>
