@@ -159,6 +159,15 @@ th{background:#f8fafc}
   .edit-actions button{width:100%}
 }
 
+
+.status-ok{font-size:20px}
+.status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
+@keyframes criticalBlink{
+  0%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.18);opacity:.25}
+  100%{transform:scale(1);opacity:1}
+}
+
 </style>
 </head>
 <body>
@@ -257,11 +266,7 @@ th{background:#f8fafc}
         </div>
         <div class="form-row" style="margin-top:12px">
           <div><label>Estoque</label><input class="app-input" id="qtd" type="number" min="0"></div>
-          <div><label>Estoque mínimo</label><input class="app-input" id="minimo" type="number" min="0" value="0"></div>
-        </div>
-        <div class="form-row" style="margin-top:12px">
           <div><label>Código interno automático</label><input class="app-input" id="codigoInternoPreview" disabled placeholder="Gerado automaticamente"></div>
-          <div></div>
         </div>
         <button class="action" style="margin-top:12px" onclick="add()">Salvar</button>
         <button class="secondary-action" style="margin-top:12px;margin-left:8px" onclick="showSection('entradaEstoque')">Dar entrada em produto existente</button>
@@ -297,7 +302,7 @@ th{background:#f8fafc}
         <div style="color:#6b7280;margin-bottom:10px">Visualização completa do estoque.</div>
         <div class="wrap">
           <table>
-            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Estoque mínimo</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Status</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
             <tbody id="listaEstoqueCompleto"></tbody></table>
         </div>
       </div>
@@ -324,7 +329,7 @@ th{background:#f8fafc}
                 <th>Ação</th>
                 <th>Origem</th>
                 <th>Produto</th>
-                <th>Quantidade</th>
+                <th>Quantidade</th><th>Status</th>
                 <th>Detalhes</th>
               </tr>
             </thead>
@@ -461,7 +466,7 @@ th{background:#f8fafc}
           <th>Usuário</th>
           <th>Tipo</th>
           <th>Origem</th>
-          <th>Quantidade</th>
+          <th>Quantidade</th><th>Status</th>
           <th>Detalhes</th>
         </tr>
       </thead>
@@ -527,10 +532,6 @@ th{background:#f8fafc}
           <input id="editPrecoPremium" type="number" min="0" step="0.01" placeholder="0,00">
         </div>
         <div class="edit-field">
-          <label>Estoque mínimo</label>
-          <input id="editMinimoPremium" type="number" min="0" placeholder="0">
-        </div>
-        <div class="edit-field">
           <label>Código interno</label>
           <input id="editCodigoInternoPremium" type="text" disabled>
         </div>
@@ -554,12 +555,6 @@ let ultimoProdutoIndex = -1;
 let audioCtx = null;
 
 let produtoEditandoPremiumIndex = null;
-
-function preencherCategoriasNovoProduto() {
-  const select = document.getElementById("categoria");
-  if (!select) return;
-  select.innerHTML = CATEGORIAS.map(cat => `<option value="${cat}">${cat}</option>`).join("");
-}
 
 const CATEGORIAS = [
   "Suplementos",
@@ -592,7 +587,6 @@ function abrirModalEdicaoPremium(i) {
   document.getElementById("editCategoriaPremium").value = p.category || "";
   byId("editQtdPremium").value = Number(p.stock || 0);
   byId("editPrecoPremium").value = Number(p.price || 0);
-  byId("editMinimoPremium").value = Number(p.min_stock || 0);
   byId("editCodigoInternoPremium").value = p.internal_code || "";
 
   byId("editModalOverlay").classList.add("show");
@@ -614,7 +608,6 @@ async function salvarEdicaoPremium() {
   const novaCategoria = byId("editCategoriaPremium").value.trim();
   const novaQtd = Number(byId("editQtdPremium").value || 0);
   const novoPreco = Number(byId("editPrecoPremium").value || 0);
-  const novoMinimo = Number(byId("editMinimoPremium").value || 0);
 
   if (!novoNome) return alert("Informe o nome do produto.");
 
@@ -623,8 +616,7 @@ async function salvarEdicaoPremium() {
     barcode: novoCodigoBarras,
     category: novaCategoria,
     stock: Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
-    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0),
-    min_stock: Number.isFinite(novoMinimo) ? novoMinimo : Number(p.min_stock || 0)
+    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0)
   }).eq('id', p.id);
 
   await registrarHistorico(
@@ -632,7 +624,7 @@ async function salvarEdicaoPremium() {
     'produtos',
     novoNome,
     Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
-    'Categoria: ' + (novaCategoria || '') + ' | Mínimo: ' + (Number.isFinite(novoMinimo) ? novoMinimo : Number(p.min_stock || 0))
+    'Categoria: ' + (novaCategoria || '')
   );
 
   fecharModalEdicaoPremium();
@@ -657,21 +649,6 @@ function showNotice(msg) { const el = byId("notice"); if (el) { el.textContent =
 function clearNotice() { const el = byId("notice"); if (el) el.classList.add("hidden"); }
 function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code128&scale=3&height=10&includetext=false&text=" + encodeURIComponent(text); }
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
-function produtoAbaixoDoMinimo(p) {
-  return Number(p?.stock || 0) <= Number(p?.min_stock || 0) && Number(p?.min_stock || 0) > 0;
-}
-function listarProdutosAbaixoMinimo() {
-  return (db.products || []).filter(produtoAbaixoDoMinimo);
-}
-function mostrarAvisoEstoqueMinimoAdmin() {
-  if (!isAdmin()) return;
-  const baixos = listarProdutosAbaixoMinimo();
-  if (!baixos.length) return;
-  const msg = "Produtos com estoque no mínimo ou abaixo:\n\n" + baixos.map(p =>
-    "- " + (p.name || "Produto") + " | atual: " + Number(p.stock || 0) + " | mínimo: " + Number(p.min_stock || 0)
-  ).join("\n");
-  setTimeout(() => alert(msg), 500);
-}
 
 function hideAllSections() {
   ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
@@ -681,7 +658,6 @@ function hideAllSections() {
 }
 function showSection(id) {
   if (id === "produto") {
-    try { preencherCategoriasNovoProduto(); } catch(e) {}
     setTimeout(() => {
       try { renderProdutos(); } catch(e){}
     }, 100);
@@ -724,7 +700,6 @@ function showSection(id) {
   }
   if (id === "manual") {
     try { preencherSelectProduto(); } catch(e) {}
-  try { preencherCategoriasNovoProduto(); } catch(e) {}
   }
   if (id === "etiquetas") {
     try { renderEtiquetas(); } catch(e) {}
@@ -1002,6 +977,15 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
   .edit-actions button{width:100%}
 }
 
+
+.status-ok{font-size:20px}
+.status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
+@keyframes criticalBlink{
+  0%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.18);opacity:.25}
+  100%{transform:scale(1);opacity:1}
+}
+
 </style>
 </head>
 <body>
@@ -1116,7 +1100,6 @@ async function bootstrap() {
     applyUserPermissions();
     render();
     applyUserPermissions();
-    mostrarAvisoEstoqueMinimoAdmin();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
 }
@@ -1189,7 +1172,6 @@ async function login() {
       applyUserPermissions();
       render();
       applyUserPermissions();
-      mostrarAvisoEstoqueMinimoAdmin();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
   } catch (e) {
@@ -1368,16 +1350,13 @@ async function add() {
     category: byId("categoria").value.trim(),
     price: Number(byId("preco").value || 0),
     stock: Number(byId("qtd").value || 0),
-    min_stock: Number(byId("minimo").value || 0),
     internal_code: nextInternalCode()
   };
   if (!item.name) return;
   item.stock_label = createStockLabelCode(item);
   await sb.from('products').insert(item);
-  await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || '') + ' | Mínimo: ' + Number(item.min_stock || 0));
-  ["nome","codigoBarras","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
-  if (byId("categoria")) byId("categoria").selectedIndex = 0;
-  if (byId("minimo")) byId("minimo").value = "0";
+  await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
+  ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
   await loadAll();
   render();
 }
@@ -1595,6 +1574,15 @@ function gerarEtiqueta(i) {
   .edit-grid{grid-template-columns:1fr}
   .edit-modal-top h3{font-size:24px}
   .edit-actions button{width:100%}
+}
+
+
+.status-ok{font-size:20px}
+.status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
+@keyframes criticalBlink{
+  0%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.18);opacity:.25}
+  100%{transform:scale(1);opacity:1}
 }
 
 </style>
@@ -1943,22 +1931,18 @@ function renderEstoqueCompleto() {
   if (!tbody) return;
   const canManage = !isOperador();
   const canSeeHistory = isAdmin();
-  const rows = db.products.map((p, i) => {
-    const baixo = produtoAbaixoDoMinimo(p);
-    return `
-    <tr style="${baixo ? 'background:#fef2f2;' : ''}">
-      <td style="${baixo ? 'color:#b91c1c;font-weight:700;' : ''}">${p.name || ""}</td>
+  const rows = db.products.map((p, i) => `
+    <tr>
+      <td>${p.name || ""}</td>
       <td>${p.barcode || ""}</td>
       <td>${p.category || ""}</td>
-      <td style="${baixo ? 'color:#b91c1c;font-weight:700;' : ''}">${p.stock ?? 0}</td>
-      <td style="${baixo ? 'color:#b91c1c;font-weight:700;' : ''}">${Number(p.min_stock || 0)}</td>
+      <td>${p.stock ?? 0}</td><td><span class="${baixo ? 'status-critical' : 'status-ok'}">${statusIcon}</span></td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
       <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""} ${canSeeHistory ? `<button class="action" onclick="abrirHistoricoProduto(${i})">Ver histórico</button>` : ""}</td>
     </tr>
-  `;
-  }).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="8">Nenhum produto cadastrado.</td></tr>`;
+  `).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
 }
 
 
