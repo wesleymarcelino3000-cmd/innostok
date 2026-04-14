@@ -79,8 +79,7 @@ Correção:
 
 
 Atualização:
-- campo de estoque mínimo no cadastro de produto
-- edição de estoque mínimo no modal de editar produto
-- alerta visual em vermelho para produto no mínimo ou abaixo
-- aviso em janela para admin ao entrar no sistema
-- salvando estoque mínimo no Supabase
+- quantidade mínima no cadastro de novo produto
+- quantidade mínima no editar produto
+- aviso em janela para admin ao abrir o sistema com nome dos produtos em estoque baixo
+- salvando quantidade mínima no Supabase

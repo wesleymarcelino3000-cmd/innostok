@@ -159,14 +159,6 @@ th{background:#f8fafc}
   .edit-actions button{width:100%}
 }
 
-
-.status-ok{font-size:20px}
-.status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
-@keyframes criticalBlink{
-0%{transform:scale(1);opacity:1}
-50%{transform:scale(1.2);opacity:.3}
-100%{transform:scale(1);opacity:1}
-}
 </style>
 </head>
 <body>
@@ -248,18 +240,7 @@ th{background:#f8fafc}
           </div>
           <button class="action" style="margin-top:12px" onclick="criarUsuario()">Cadastrar usuário</button>
           <div class="wrap" style="margin-top:16px">
-            <table><thead>
-<tr>
-<th>Nome</th>
-<th>Código de barras</th>
-<th>Categoria</th>
-<th>Quantidade</th>
-<th>Status</th>
-<th>Preço</th>
-<th>Código interno</th>
-<th>Ações</th>
-</tr>
-</thead><tbody id="listaUsuarios"></tbody><tbody id="listaProdutos"></tbody></table>
+            <table><thead><tr><th>Nome</th><th>Usuário</th><th>Nível</th><th>Ações</th></tr></thead><tbody id="listaUsuarios"></tbody><tbody id="listaProdutos"></tbody></table>
           </div>
         </div>
       </div>
@@ -276,7 +257,11 @@ th{background:#f8fafc}
         </div>
         <div class="form-row" style="margin-top:12px">
           <div><label>Estoque</label><input class="app-input" id="qtd" type="number" min="0"></div>
+          <div><label>Quantidade mínima</label><input class="app-input" id="minimo" type="number" min="0" value="0"></div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
           <div><label>Código interno automático</label><input class="app-input" id="codigoInternoPreview" disabled placeholder="Gerado automaticamente"></div>
+          <div></div>
         </div>
         <button class="action" style="margin-top:12px" onclick="add()">Salvar</button>
         <button class="secondary-action" style="margin-top:12px;margin-left:8px" onclick="showSection('entradaEstoque')">Dar entrada em produto existente</button>
@@ -312,18 +297,7 @@ th{background:#f8fafc}
         <div style="color:#6b7280;margin-bottom:10px">Visualização completa do estoque.</div>
         <div class="wrap">
           <table>
-            <thead>
-<tr>
-<th>Nome</th>
-<th>Código de barras</th>
-<th>Categoria</th>
-<th>Quantidade</th>
-<th>Status</th>
-<th>Preço</th>
-<th>Código interno</th>
-<th>Ações</th>
-</tr>
-</thead>
+            <thead><tr><th>Nome</th><th>Código de barras</th><th>Categoria</th><th>Quantidade</th><th>Preço</th><th>Código interno</th><th>Ações</th></tr></thead>
             <tbody id="listaEstoqueCompleto"></tbody></table>
         </div>
       </div>
@@ -344,17 +318,16 @@ th{background:#f8fafc}
         <div class="wrap">
           <table>
             <thead>
-<tr>
-<th>Nome</th>
-<th>Código de barras</th>
-<th>Categoria</th>
-<th>Quantidade</th>
-<th>Status</th>
-<th>Preço</th>
-<th>Código interno</th>
-<th>Ações</th>
-</tr>
-</thead>
+              <tr>
+                <th>Data</th>
+                <th>Usuário</th>
+                <th>Ação</th>
+                <th>Origem</th>
+                <th>Produto</th>
+                <th>Quantidade</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
             <tbody id="listaHistorico"></tbody>
           <tbody id="listaProdutos"></tbody></table>
         </div>
@@ -403,18 +376,7 @@ th{background:#f8fafc}
           <div><label>Tamanho</label><input class="app-input" value="100 x 150 mm" disabled></div><div></div>
         </div>
         <div class="wrap">
-          <table><thead>
-<tr>
-<th>Nome</th>
-<th>Código de barras</th>
-<th>Categoria</th>
-<th>Quantidade</th>
-<th>Status</th>
-<th>Preço</th>
-<th>Código interno</th>
-<th>Ações</th>
-</tr>
-</thead><tbody id="listaEtiquetas"></tbody></table>
+          <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody></table>
         </div>
         <div id="printArea" class="hidden" style="margin-top:16px">
           <div id="labelSheet" class="label-sheet"></div>
@@ -433,17 +395,14 @@ th{background:#f8fafc}
         <div class="wrap">
           <table>
             <thead>
-<tr>
-<th>Nome</th>
-<th>Código de barras</th>
-<th>Categoria</th>
-<th>Quantidade</th>
-<th>Status</th>
-<th>Preço</th>
-<th>Código interno</th>
-<th>Ações</th>
-</tr>
-</thead>
+              <tr>
+                <th>Data</th>
+                <th>Produto</th>
+                <th>Quantidade restante</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
             <tbody id="listaFilaEtiquetas"></tbody>
           <tbody id="listaProdutos"></tbody></table>
         </div>
@@ -497,17 +456,15 @@ th{background:#f8fafc}
   <div class="wrap" style="margin-top:16px">
     <table>
       <thead>
-<tr>
-<th>Nome</th>
-<th>Código de barras</th>
-<th>Categoria</th>
-<th>Quantidade</th>
-<th>Status</th>
-<th>Preço</th>
-<th>Código interno</th>
-<th>Ações</th>
-</tr>
-</thead>
+        <tr>
+          <th>Data</th>
+          <th>Usuário</th>
+          <th>Tipo</th>
+          <th>Origem</th>
+          <th>Quantidade</th>
+          <th>Detalhes</th>
+        </tr>
+      </thead>
       <tbody id="produtoHistoricoTabela"></tbody>
     </table>
   </div>
@@ -570,6 +527,10 @@ th{background:#f8fafc}
           <input id="editPrecoPremium" type="number" min="0" step="0.01" placeholder="0,00">
         </div>
         <div class="edit-field">
+          <label>Quantidade mínima</label>
+          <input id="editMinimoPremium" type="number" min="0" placeholder="0">
+        </div>
+        <div class="edit-field">
           <label>Código interno</label>
           <input id="editCodigoInternoPremium" type="text" disabled>
         </div>
@@ -625,6 +586,7 @@ function abrirModalEdicaoPremium(i) {
   document.getElementById("editCategoriaPremium").value = p.category || "";
   byId("editQtdPremium").value = Number(p.stock || 0);
   byId("editPrecoPremium").value = Number(p.price || 0);
+  byId("editMinimoPremium").value = Number(p.min_stock || 0);
   byId("editCodigoInternoPremium").value = p.internal_code || "";
 
   byId("editModalOverlay").classList.add("show");
@@ -646,6 +608,7 @@ async function salvarEdicaoPremium() {
   const novaCategoria = byId("editCategoriaPremium").value.trim();
   const novaQtd = Number(byId("editQtdPremium").value || 0);
   const novoPreco = Number(byId("editPrecoPremium").value || 0);
+  const novoMinimo = Number(byId("editMinimoPremium").value || 0);
 
   if (!novoNome) return alert("Informe o nome do produto.");
 
@@ -654,7 +617,8 @@ async function salvarEdicaoPremium() {
     barcode: novoCodigoBarras,
     category: novaCategoria,
     stock: Number.isFinite(novaQtd) ? novaQtd : Number(p.stock || 0),
-    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0)
+    price: Number.isFinite(novoPreco) ? novoPreco : Number(p.price || 0),
+    min_stock: Number.isFinite(novoMinimo) ? novoMinimo : Number(p.min_stock || 0)
   }).eq('id', p.id);
 
   await registrarHistorico(
@@ -687,6 +651,21 @@ function showNotice(msg) { const el = byId("notice"); if (el) { el.textContent =
 function clearNotice() { const el = byId("notice"); if (el) el.classList.add("hidden"); }
 function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code128&scale=3&height=10&includetext=false&text=" + encodeURIComponent(text); }
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
+function produtoAbaixoDoMinimo(p) {
+  return Number(p?.min_stock || 0) > 0 && Number(p?.stock || 0) <= Number(p?.min_stock || 0);
+}
+function listarProdutosBaixoEstoque() {
+  return (db.products || []).filter(produtoAbaixoDoMinimo);
+}
+function mostrarAvisoBaixoEstoqueAdmin() {
+  if (!isAdmin()) return;
+  const baixos = listarProdutosBaixoEstoque();
+  if (!baixos.length) return;
+  const msg = "Produtos com estoque baixo:\n\n" + baixos.map(p =>
+    "- " + (p.name || "Produto") + " | estoque atual: " + Number(p.stock || 0) + " | mínimo: " + Number(p.min_stock || 0)
+  ).join("\n");
+  setTimeout(() => alert(msg), 500);
+}
 
 function hideAllSections() {
   ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
@@ -1015,14 +994,6 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
   .edit-actions button{width:100%}
 }
 
-
-.status-ok{font-size:20px}
-.status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
-@keyframes criticalBlink{
-0%{transform:scale(1);opacity:1}
-50%{transform:scale(1.2);opacity:.3}
-100%{transform:scale(1);opacity:1}
-}
 </style>
 </head>
 <body>
@@ -1137,6 +1108,7 @@ async function bootstrap() {
     applyUserPermissions();
     render();
     applyUserPermissions();
+    mostrarAvisoBaixoEstoqueAdmin();
     hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
   }
 }
@@ -1209,6 +1181,7 @@ async function login() {
       applyUserPermissions();
       render();
       applyUserPermissions();
+      mostrarAvisoBaixoEstoqueAdmin();
       hideAllSections(); byId("produto").classList.remove("hidden"); byId("produto").classList.add("section-anim-in");
     }, 850);
   } catch (e) {
@@ -1387,6 +1360,7 @@ async function add() {
     category: byId("categoria").value.trim(),
     price: Number(byId("preco").value || 0),
     stock: Number(byId("qtd").value || 0),
+    min_stock: Number(byId("minimo").value || 0),
     internal_code: nextInternalCode()
   };
   if (!item.name) return;
@@ -1394,6 +1368,7 @@ async function add() {
   await sb.from('products').insert(item);
   await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
   ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
+  if (byId("minimo")) byId("minimo").value = "0";
   await loadAll();
   render();
 }
@@ -1613,14 +1588,6 @@ function gerarEtiqueta(i) {
   .edit-actions button{width:100%}
 }
 
-
-.status-ok{font-size:20px}
-.status-critical{font-size:20px;display:inline-block;animation:criticalBlink 1s infinite}
-@keyframes criticalBlink{
-0%{transform:scale(1);opacity:1}
-50%{transform:scale(1.2);opacity:.3}
-100%{transform:scale(1);opacity:1}
-}
 </style>
 </head>
 <body>
@@ -1962,34 +1929,27 @@ async function exportarPlanilha() {
   URL.revokeObjectURL(a.href);
 }
 
-
 function renderEstoqueCompleto() {
   const tbody = byId("listaEstoqueCompleto");
   if (!tbody) return;
-
+  const canManage = !isOperador();
+  const canSeeHistory = isAdmin();
   const rows = db.products.map((p, i) => {
-    const baixo = Number(p?.stock || 0) <= Number(p?.min_stock || 0) && Number(p?.min_stock || 0) > 0;
-    const statusIcon = baixo ? "🔴" : "🟢";
-
+    const baixo = produtoAbaixoDoMinimo(p);
     return `
-    <tr>
-      <td>${p.name || ""}</td>
+    <tr style="${baixo ? 'background:#fef2f2;' : ''}">
+      <td style="${baixo ? 'color:#b91c1c;font-weight:700;' : ''}">${p.name || ""}</td>
       <td>${p.barcode || ""}</td>
       <td>${p.category || ""}</td>
-      <td>${p.stock ?? 0}</td>
-      <td><span class="${baixo ? 'status-critical' : 'status-ok'}">${statusIcon}</span></td>
+      <td style="${baixo ? 'color:#b91c1c;font-weight:700;' : ''}">${p.stock ?? 0}</td>
       <td>${Number(p.price || 0).toFixed(2)}</td>
       <td>${p.internal_code || ""}</td>
-      <td>
-        <button class="secondary-action" onclick="editarProduto(${i})">Editar</button>
-        <button class="danger" onclick="excluirProduto(${i})">Excluir</button>
-      </td>
-    </tr>`;
+      <td>${canManage ? `<button class="secondary-action" onclick="editarProduto(${i})">Editar</button> <button class="danger" onclick="excluirProduto(${i})">Excluir</button>` : ""} ${canSeeHistory ? `<button class="action" onclick="abrirHistoricoProduto(${i})">Ver histórico</button>` : ""}</td>
+    </tr>
+  `;
   }).join("");
-
-  tbody.innerHTML = rows || `<tr><td colspan="8">Nenhum produto cadastrado.</td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhum produto cadastrado.</td></tr>`;
 }
-
 
 
 
