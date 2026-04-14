@@ -76,10 +76,3 @@ Correção adicional:
 
 Correção:
 - impressão da etiqueta restante da fila agora mostra o conteúdo em vez de página em branco.
-
-
-Atualização:
-- quantidade mínima no cadastro de novo produto
-- quantidade mínima no editar produto
-- aviso em janela para admin ao abrir o sistema com nome dos produtos em estoque baixo
-- salvando quantidade mínima no Supabase

@@ -159,6 +159,52 @@ th{background:#f8fafc}
   .edit-actions button{width:100%}
 }
 
+
+.low-stock-overlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:12000; padding:18px;
+}
+.low-stock-overlay.show{display:flex}
+.low-stock-modal{
+  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(241,245,249,.97));
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.55);
+}
+.low-stock-top{
+  padding:24px 26px 18px;
+  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
+  color:#fff;
+}
+.low-stock-top h3{margin:0;font-size:28px}
+.low-stock-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
+.low-stock-body{padding:22px 24px 24px; max-height:65vh; overflow:auto}
+.low-stock-list{display:grid; gap:12px}
+.low-stock-item{
+  padding:14px 16px; border-radius:18px; border:1px solid #fecaca;
+  background:linear-gradient(135deg,#fff1f2,#fef2f2);
+  box-shadow:0 8px 18px rgba(185,28,28,.08);
+}
+.low-stock-item strong{display:block; color:#7f1d1d; font-size:16px; margin-bottom:6px}
+.low-stock-meta{display:flex; gap:12px; flex-wrap:wrap; color:#991b1b; font-weight:700}
+.low-stock-chip{
+  display:inline-flex; align-items:center; gap:8px; border-radius:999px;
+  padding:8px 12px; background:#fee2e2; color:#991b1b; font-weight:800; font-size:13px;
+}
+.low-stock-actions{
+  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
+}
+.low-stock-actions button{
+  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
+}
+.low-stock-close{
+  background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; box-shadow:0 14px 28px rgba(37,99,235,.25)
+}
+@media(max-width:800px){
+  .low-stock-top h3{font-size:24px}
+  .low-stock-actions button{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -544,6 +590,22 @@ th{background:#f8fafc}
   </div>
 </div>
 
+
+<div id="lowStockOverlay" class="low-stock-overlay">
+  <div class="low-stock-modal">
+    <div class="low-stock-top">
+      <h3>Alerta de estoque baixo</h3>
+      <div class="sub">Produtos que estão no mínimo ou abaixo do mínimo cadastrado</div>
+    </div>
+    <div class="low-stock-body">
+      <div id="lowStockList" class="low-stock-list"></div>
+      <div class="low-stock-actions">
+        <button class="low-stock-close" onclick="fecharAlertaBaixoEstoque()">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
 let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
@@ -657,14 +719,29 @@ function produtoAbaixoDoMinimo(p) {
 function listarProdutosBaixoEstoque() {
   return (db.products || []).filter(produtoAbaixoDoMinimo);
 }
+function fecharAlertaBaixoEstoque() {
+  byId('lowStockOverlay')?.classList.remove('show');
+}
 function mostrarAvisoBaixoEstoqueAdmin() {
   if (!isAdmin()) return;
   const baixos = listarProdutosBaixoEstoque();
   if (!baixos.length) return;
-  const msg = "Produtos com estoque baixo:\n\n" + baixos.map(p =>
-    "- " + (p.name || "Produto") + " | estoque atual: " + Number(p.stock || 0) + " | mínimo: " + Number(p.min_stock || 0)
-  ).join("\n");
-  setTimeout(() => alert(msg), 500);
+
+  const list = byId("lowStockList");
+  const overlay = byId("lowStockOverlay");
+  if (!list || !overlay) return;
+
+  list.innerHTML = baixos.map(p => `
+    <div class="low-stock-item">
+      <strong>${p.name || "Produto"}</strong>
+      <div class="low-stock-meta">
+        <span class="low-stock-chip">Estoque atual: ${Number(p.stock || 0)}</span>
+        <span class="low-stock-chip">Mínimo: ${Number(p.min_stock || 0)}</span>
+      </div>
+    </div>
+  `).join("");
+
+  setTimeout(() => overlay.classList.add("show"), 450);
 }
 
 function hideAllSections() {
@@ -992,6 +1069,52 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
   .edit-grid{grid-template-columns:1fr}
   .edit-modal-top h3{font-size:24px}
   .edit-actions button{width:100%}
+}
+
+
+.low-stock-overlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:12000; padding:18px;
+}
+.low-stock-overlay.show{display:flex}
+.low-stock-modal{
+  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(241,245,249,.97));
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.55);
+}
+.low-stock-top{
+  padding:24px 26px 18px;
+  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
+  color:#fff;
+}
+.low-stock-top h3{margin:0;font-size:28px}
+.low-stock-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
+.low-stock-body{padding:22px 24px 24px; max-height:65vh; overflow:auto}
+.low-stock-list{display:grid; gap:12px}
+.low-stock-item{
+  padding:14px 16px; border-radius:18px; border:1px solid #fecaca;
+  background:linear-gradient(135deg,#fff1f2,#fef2f2);
+  box-shadow:0 8px 18px rgba(185,28,28,.08);
+}
+.low-stock-item strong{display:block; color:#7f1d1d; font-size:16px; margin-bottom:6px}
+.low-stock-meta{display:flex; gap:12px; flex-wrap:wrap; color:#991b1b; font-weight:700}
+.low-stock-chip{
+  display:inline-flex; align-items:center; gap:8px; border-radius:999px;
+  padding:8px 12px; background:#fee2e2; color:#991b1b; font-weight:800; font-size:13px;
+}
+.low-stock-actions{
+  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
+}
+.low-stock-actions button{
+  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
+}
+.low-stock-close{
+  background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; box-shadow:0 14px 28px rgba(37,99,235,.25)
+}
+@media(max-width:800px){
+  .low-stock-top h3{font-size:24px}
+  .low-stock-actions button{width:100%}
 }
 
 </style>
@@ -1586,6 +1709,52 @@ function gerarEtiqueta(i) {
   .edit-grid{grid-template-columns:1fr}
   .edit-modal-top h3{font-size:24px}
   .edit-actions button{width:100%}
+}
+
+
+.low-stock-overlay{
+  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:12000; padding:18px;
+}
+.low-stock-overlay.show{display:flex}
+.low-stock-modal{
+  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
+  background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(241,245,249,.97));
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.55);
+}
+.low-stock-top{
+  padding:24px 26px 18px;
+  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
+  color:#fff;
+}
+.low-stock-top h3{margin:0;font-size:28px}
+.low-stock-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
+.low-stock-body{padding:22px 24px 24px; max-height:65vh; overflow:auto}
+.low-stock-list{display:grid; gap:12px}
+.low-stock-item{
+  padding:14px 16px; border-radius:18px; border:1px solid #fecaca;
+  background:linear-gradient(135deg,#fff1f2,#fef2f2);
+  box-shadow:0 8px 18px rgba(185,28,28,.08);
+}
+.low-stock-item strong{display:block; color:#7f1d1d; font-size:16px; margin-bottom:6px}
+.low-stock-meta{display:flex; gap:12px; flex-wrap:wrap; color:#991b1b; font-weight:700}
+.low-stock-chip{
+  display:inline-flex; align-items:center; gap:8px; border-radius:999px;
+  padding:8px 12px; background:#fee2e2; color:#991b1b; font-weight:800; font-size:13px;
+}
+.low-stock-actions{
+  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
+}
+.low-stock-actions button{
+  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
+}
+.low-stock-close{
+  background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; box-shadow:0 14px 28px rgba(37,99,235,.25)
+}
+@media(max-width:800px){
+  .low-stock-top h3{font-size:24px}
+  .low-stock-actions button{width:100%}
 }
 
 </style>
@@ -2417,6 +2586,15 @@ document.addEventListener("keydown", function(ev){
 document.addEventListener("click", function(ev){
   const overlay = byId("editModalOverlay");
   if (overlay && ev.target === overlay) fecharModalEdicaoPremium();
+});
+
+
+document.addEventListener("keydown", function(ev){
+  if (ev.key === "Escape") fecharAlertaBaixoEstoque();
+});
+document.addEventListener("click", function(ev){
+  const overlay = byId("lowStockOverlay");
+  if (overlay && ev.target === overlay) fecharAlertaBaixoEstoque();
 });
 
 bootstrap();
