@@ -119,8 +119,3 @@ Correção:
 - ao dar baixa em uma etiqueta ativa, o restante volta para a Fila de etiquetas
 - a etiqueta ativa é marcada como consumida
 - a fila recebe a quantidade restante para imprimir nova etiqueta
-
-Correção:
-- baixa pelo celular agora mostra janela informando o restante da etiqueta
-- baixa pelo celular envia automaticamente o restante para Fila de etiquetas
-- se a etiqueta for consumida inteira, informa que foi totalmente consumida

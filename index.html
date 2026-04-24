@@ -1368,16 +1368,12 @@ async function processarRestanteEtiquetaAposBaixa(productId, productName, stockL
       Number(x.product_id) === Number(productId) && String(x.status || "") === "ativa"
     );
 
-    if (!etiquetaAtiva) {
-      return { ok:false, message:"Nenhuma etiqueta ativa encontrada para este produto." };
-    }
+    if (!etiquetaAtiva) return;
 
     const quantidadeEtiqueta = Number(etiquetaAtiva.quantity_remaining || 0);
     const baixa = Number(qtdBaixada || 0);
 
-    if (quantidadeEtiqueta <= 0 || baixa <= 0) {
-      return { ok:false, message:"Quantidade inválida para processar etiqueta." };
-    }
+    if (quantidadeEtiqueta <= 0 || baixa <= 0) return;
 
     if (baixa < quantidadeEtiqueta) {
       const restante = quantidadeEtiqueta - baixa;
@@ -1407,26 +1403,14 @@ async function processarRestanteEtiquetaAposBaixa(productId, productName, stockL
 
       await loadPendingLabels();
       renderFilaEtiquetas();
-
-      return {
-        ok:true,
-        restante,
-        message:"Baixa realizada. Etiqueta restante enviada para a fila: " + restante + " unidade(s)."
-      };
+      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+    } else {
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await loadPendingLabels();
+      renderFilaEtiquetas();
     }
-
-    await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
-    await loadPendingLabels();
-    renderFilaEtiquetas();
-
-    return {
-      ok:true,
-      restante:0,
-      message:"Baixa realizada. A etiqueta foi totalmente consumida."
-    };
   } catch (e) {
     console.error("Erro ao processar restante da etiqueta:", e);
-    return { ok:false, message:"Erro ao enviar restante para a fila de etiquetas." };
   }
 }
 
@@ -1834,8 +1818,7 @@ async function registrarManual() {
   render();
 
   if (tipo === 'saida') {
-    const resultadoEtiquetaManual = await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtdm);
-    mostrarJanelaRestanteEtiqueta(resultadoEtiquetaManual);
+    await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtdm);
   }
 }
 function renderEtiquetas() {
@@ -2149,12 +2132,6 @@ function playBeep() {
     osc.start(); osc.stop(audioCtx.currentTime + 0.12);
   } catch (e) {}
 }
-
-function mostrarJanelaRestanteEtiqueta(resultado) {
-  if (!resultado || !resultado.message) return;
-  alert(resultado.message);
-}
-
 function showBigOk(msg) {
   const el = byId("bigOk");
   el.textContent = msg;
@@ -2182,8 +2159,7 @@ async function darBaixaScanner() {
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
 
-  const resultadoEtiqueta = await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtd);
-  mostrarJanelaRestanteEtiqueta(resultadoEtiqueta);
+  await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtd);
 }
 async function excluirProduto(i) {
   if (isOperador()) return alert("Operador não pode excluir produto.");
