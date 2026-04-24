@@ -1,14 +1,120 @@
-VERSÃO CORRIGIDA FINAL
+VERSÃO DO ZERO LIMPA - CORRIGIDA
 
-Inclui:
-- Categoria selecionável em Novo produto
-- Fila de etiqueta corrigida
-- Ao gerar etiqueta, salva etiqueta ativa antes de imprimir
-- Baixa manual e baixa pelo celular enviam restante para fila
-- SQL com permissões para pending_labels
+CONFIGURADO COM:
+SUPABASE_URL=https://skjvvuaxhetixbugowfj.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq
 
-IMPORTANTE:
-1. Rode o SQL_SETUP.sql no Supabase.
-2. Publique todos os arquivos.
-3. Gere uma etiqueta nova depois da atualização.
-4. Faça uma baixa menor que a quantidade da etiqueta.
+PASSOS:
+1. Rode SQL_SETUP.sql no SQL Editor do Supabase
+2. Publique os arquivos no Vercel ou Netlify
+3. Login:
+   usuário: admin
+   senha: 123456
+
+
+Atualização:
+- botão Exportar Excel
+- planilha .xlsx formatada automaticamente
+
+
+Atualização:
+- botão Histórico visível somente para admin
+- histórico de movimentações, criação, edição e exclusão
+
+
+Atualização:
+- fila de etiquetas pendentes
+- quando baixar uma etiqueta parcial, o restante fica em espera para imprimir depois
+- botão para imprimir todas as pendentes de uma vez
+
+
+Atualização:
+- sempre pede login ao abrir novamente o sistema
+- no celular, ao tocar em um botão do menu, a tela desce automaticamente até a função
+
+
+Correção:
+- no celular, o menu agora rola a área principal automaticamente até a função selecionada.
+
+
+Atualização:
+- opção para dar entrada em produto existente sem criar um novo cadastro.
+
+
+Atualização:
+- removida a lista fixa de produtos da parte de baixo
+- estoque volta a aparecer somente em Ver estoque
+- fundo com imagem aplicada na área principal
+
+
+Atualização:
+- voltou editar/excluir produto dentro de Ver estoque
+- novo nível Conferente
+- Operador não vê: baixa manual, novo produto, exportar excel, etiqueta de estoque, fila de etiquetas e scanner no celular
+- operador também não pode editar/excluir produto no estoque
+
+
+Atualização:
+- ao atualizar a página, o usuário permanece logado
+- ao fechar a aba/navegador, a sessão é encerrada automaticamente
+
+
+Atualização:
+- sessão mantida mesmo ao atualizar a página e reabrir o navegador
+- logout manual limpa a sessão
+
+
+Atualização:
+- botões agora somem quando o usuário não tem acesso, seguindo as permissões já definidas por nível.
+
+
+Correção adicional:
+- histórico agora grava mesmo se a coluna details não existir
+- fila de etiquetas usa etiqueta ativa e etiqueta pendente corretamente
+- baixa por scanner/manual envia restante para fila
+
+
+Correção:
+- impressão da etiqueta restante da fila agora mostra o conteúdo em vez de página em branco.
+
+
+Atualização:
+- botão Documentar para admin e conferente
+- documentação por produto com dia que chegou, validade e lote
+- registros salvos no Supabase na tabela product_docs
+
+
+Atualização:
+- etiquetas geradas mostram data da impressão
+- etiquetas geradas mostram lote, validade e dia que o produto chegou
+- etiquetas da fila também mostram lote, validade e dia que chegou
+- dados vêm da última documentação cadastrada do produto
+
+Atualização:
+- campo Quantidade na documentação de produto
+- correção no salvamento da documentação no Supabase
+- quantidade documentada aparece na lista e nas etiquetas
+- SQL atualizado com coluna quantity na tabela product_docs
+
+Atualização:
+- campos manuais de lote e validade em Etiquetas de estoque
+- ao preencher esses campos, a etiqueta usa os dados digitados
+- se não preencher, continua buscando os dados cadastrados em Documentar
+
+Atualização:
+- QR Code da etiqueta agora leva dados completos
+- inclui produto, quantidade, lote, validade, dia que chegou, data da impressão e código
+- código de barras continua usando o código da etiqueta normalmente
+
+Correção:
+- campos de lote e validade agora aparecem diretamente na tela Etiquetas de estoque
+- se preenchidos, esses campos são impressos na etiqueta
+- QR Code completo mantido
+
+VERSÃO UNIFICADA FINAL:
+- mantém Documentar
+- mantém lote e validade em Etiquetas de estoque
+- mantém QR simples apenas com código do produto
+- mantém categoria selecionável
+- corrige fila de etiqueta restante com base na versão que funcionava
+- mantém quantidade mínima e alerta bonito
