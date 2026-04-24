@@ -340,14 +340,10 @@ th{background:#f8fafc}
           <div><label>Validade</label><input class="app-input" id="docValidade" type="date"></div>
           <div><label>Lote</label><input class="app-input" id="docLote" placeholder="Digite o lote"></div>
         </div>
-        <div class="form-row" style="margin-top:12px">
-          <div><label>Quantidade</label><input class="app-input" id="docQuantidade" type="number" min="0" value="0"></div>
-          <div></div>
-        </div>
         <button class="success-action" style="margin-top:12px" onclick="salvarDocumentacaoProduto()">Salvar documentação</button>
         <div class="wrap" style="margin-top:16px">
           <table>
-            <thead><tr><th>Produto</th><th>Dia que chegou</th><th>Validade</th><th>Lote</th><th>Quantidade</th><th>Usuário</th><th>Registro</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Produto</th><th>Dia que chegou</th><th>Validade</th><th>Lote</th><th>Usuário</th><th>Registro</th><th>Ações</th></tr></thead>
             <tbody id="listaDocumentacoes"></tbody>
           </table>
         </div>
@@ -879,7 +875,6 @@ function dadosDocumentacaoEtiqueta(productId) {
     lote: doc?.lot || "Não informado",
     validade: doc?.expiration_date ? formatDateOnlyBR(doc.expiration_date) : "Não informado",
     chegada: doc?.arrival_date ? formatDateOnlyBR(doc.arrival_date) : "Não informado",
-    quantidade: Number(doc?.quantity || 0),
     impressao: new Date().toLocaleDateString('pt-BR')
   };
 }
@@ -891,43 +886,32 @@ async function salvarDocumentacaoProduto() {
   const diaChegou = byId("docDiaChegou")?.value || "";
   const validade = byId("docValidade")?.value || "";
   const lote = byId("docLote")?.value.trim() || "";
-  const quantidade = Number(byId("docQuantidade")?.value || 0);
 
   if (!productId) return alert("Selecione um produto.");
   if (!diaChegou) return alert("Informe o dia que chegou.");
   if (!validade) return alert("Informe a validade.");
   if (!lote) return alert("Informe o lote.");
-  if (!Number.isFinite(quantidade) || quantidade < 0) return alert("Informe uma quantidade válida.");
 
   const p = (db.products || []).find(x => Number(x.id) === Number(productId));
   if (!p) return alert("Produto não encontrado.");
 
-  const payload = {
+  await sb.from('product_docs').insert({
     product_id: p.id,
     product_name: p.name || "",
     arrival_date: diaChegou,
     expiration_date: validade,
     lot: lote,
-    quantity: quantidade,
     username: currentUser()?.username || ""
-  };
+  });
 
-  const res = await sb.from('product_docs').insert(payload);
-  if (res && res.error) {
-    console.error("Erro ao salvar documentação:", res.error);
-    alert("Não foi possível salvar. Rode o SQL_SETUP.sql atualizado no Supabase e tente novamente.");
-    return;
-  }
-
-  await registrarHistorico('documentar_produto', 'documentar', p.name || "", quantidade,
-    'Chegou: ' + formatDateOnlyBR(diaChegou) + ' | Validade: ' + formatDateOnlyBR(validade) + ' | Lote: ' + lote + ' | Quantidade: ' + quantidade
+  await registrarHistorico('documentar_produto', 'documentar', p.name || "", 0,
+    'Chegou: ' + formatDateOnlyBR(diaChegou) + ' | Validade: ' + formatDateOnlyBR(validade) + ' | Lote: ' + lote
   );
 
   byId("docProduto").value = "";
   byId("docDiaChegou").value = "";
   byId("docValidade").value = "";
   byId("docLote").value = "";
-  byId("docQuantidade").value = "0";
 
   await loadProductDocs();
   renderDocumentacoesProduto();
@@ -954,13 +938,12 @@ function renderDocumentacoesProduto() {
       <td>${formatDateOnlyBR(d.arrival_date)}</td>
       <td>${formatDateOnlyBR(d.expiration_date)}</td>
       <td>${d.lot || ""}</td>
-      <td>${Number(d.quantity || 0)}</td>
       <td>${d.username || ""}</td>
       <td>${formatDateTime(d.created_at)}</td>
       <td><button class="danger" onclick="excluirDocumentacaoProduto(${i})">Excluir</button></td>
     </tr>
   `).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="8">Nenhuma documentação cadastrada.</td></tr>`;
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhuma documentação cadastrada.</td></tr>`;
 }
 
 async function loadPendingLabels() {
@@ -1008,9 +991,8 @@ function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
       <div style="font-size:14px;font-weight:800;text-align:center;margin-bottom:8px">Data da impressão: ${info.impressao}</div>
 
       <div style="border:1px solid #111;border-radius:8px;padding:7px;margin:8px 0;font-size:13px;line-height:1.35;text-align:left">
-        <div><b>Lote:</b> ${info.lote}</div>
-        <div><b>Quantidade documentada:</b> ${Number(info.quantidade || 0)}</div>
-        <div><b>Validade:</b> ${info.validade}</div>
+        <div style="border:2px solid #111;padding:6px;margin-bottom:4px"><b>Lote:</b> ${info.lote}</div>
+        <div style="border:2px solid #111;padding:6px;margin-bottom:4px"><b>Validade:</b> ${info.validade}</div>
         <div><b>Dia que chegou:</b> ${info.chegada}</div>
       </div>
 
@@ -1934,9 +1916,8 @@ function gerarEtiqueta(i) {
       <div class="qty">Quantidade atual: ${qty}</div>
       <div class="qty">Data da impressão: ${docInfo.impressao}</div>
       <div style="border:1px solid #111;border-radius:8px;padding:7px;margin-top:8px;font-size:13px;line-height:1.35;text-align:left">
-        <div><b>Lote:</b> ${docInfo.lote}</div>
-        <div><b>Quantidade documentada:</b> ${Number(docInfo.quantidade || 0)}</div>
-        <div><b>Validade:</b> ${docInfo.validade}</div>
+        <div style="border:2px solid #111;padding:6px;margin-bottom:4px"><b>Lote:</b> ${docInfo.lote}</div>
+        <div style="border:2px solid #111;padding:6px;margin-bottom:4px"><b>Validade:</b> ${docInfo.validade}</div>
         <div><b>Dia que chegou:</b> ${docInfo.chegada}</div>
       </div>
     </div>
