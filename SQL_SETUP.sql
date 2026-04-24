@@ -60,8 +60,11 @@ create table if not exists public.product_docs (
   arrival_date date,
   expiration_date date,
   lot text,
+  quantity integer default 0,
   username text,
   created_at timestamptz default now()
 );
 
 alter table public.product_docs disable row level security;
+
+alter table public.product_docs add column if not exists quantity integer default 0;

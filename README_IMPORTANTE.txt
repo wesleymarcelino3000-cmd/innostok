@@ -89,3 +89,9 @@ Atualização:
 - etiquetas geradas mostram lote, validade e dia que o produto chegou
 - etiquetas da fila também mostram lote, validade e dia que chegou
 - dados vêm da última documentação cadastrada do produto
+
+Atualização:
+- campo Quantidade na documentação de produto
+- correção no salvamento da documentação no Supabase
+- quantidade documentada aparece na lista e nas etiquetas
+- SQL atualizado com coluna quantity na tabela product_docs
