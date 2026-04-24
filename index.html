@@ -862,6 +862,23 @@ function formatDateOnlyBR(v) {
   }
 }
 
+
+function getDocumentacaoMaisRecenteProduto(productId) {
+  const docs = (db.productDocs || []).filter(d => Number(d.product_id) === Number(productId));
+  if (!docs.length) return null;
+  return docs.sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+}
+
+function dadosDocumentacaoEtiqueta(productId) {
+  const doc = getDocumentacaoMaisRecenteProduto(productId);
+  return {
+    lote: doc?.lot || "Não informado",
+    validade: doc?.expiration_date ? formatDateOnlyBR(doc.expiration_date) : "Não informado",
+    chegada: doc?.arrival_date ? formatDateOnlyBR(doc.arrival_date) : "Não informado",
+    impressao: new Date().toLocaleDateString('pt-BR')
+  };
+}
+
 async function salvarDocumentacaoProduto() {
   if (!(isAdmin() || isConferente())) return alert("Somente admin ou conferente pode documentar produto.");
 
@@ -965,12 +982,20 @@ function renderFilaEtiquetas() {
   tbody.innerHTML = rows || `<tr><td colspan="5">Nenhuma etiqueta pendente.</td></tr>`;
 }
 
-function montarCardEtiqueta(nome, quantidade, stockLabel) {
+function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
+  const info = docInfo || { lote: "Não informado", validade: "Não informado", chegada: "Não informado", impressao: new Date().toLocaleDateString('pt-BR') };
   return `
     <div class="label-card">
       <div class="label-main-name">${nome || ""}</div>
       <div class="label-qty">Quantidade atual: ${Number(quantidade || 0)}</div>
-      <div style=\"font-size:14px;font-weight:700;text-align:center;margin-bottom:8px\">Data: ${new Date().toLocaleDateString('pt-BR')}</div>
+      <div style="font-size:14px;font-weight:800;text-align:center;margin-bottom:8px">Data da impressão: ${info.impressao}</div>
+
+      <div style="border:1px solid #111;border-radius:8px;padding:7px;margin:8px 0;font-size:13px;line-height:1.35;text-align:left">
+        <div><b>Lote:</b> ${info.lote}</div>
+        <div><b>Validade:</b> ${info.validade}</div>
+        <div><b>Dia que chegou:</b> ${info.chegada}</div>
+      </div>
+
       <div class="label-simple-grid">
         <div>
           <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
@@ -1257,7 +1282,7 @@ async function imprimirEtiquetaPendente(i) {
   const item = pendentes[i];
   if (!item) return;
 
-  const card = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label);
+  const card = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label, dadosDocumentacaoEtiqueta(item.product_id));
   const win = abrirJanelaImpressaoEtiquetas(card);
   if (!win) return;
 
@@ -1272,7 +1297,7 @@ async function imprimirFilaEtiquetas() {
     return;
   }
 
-  const cards = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label)).join("");
+  const cards = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label, dadosDocumentacaoEtiqueta(item.product_id))).join("");
   const win = abrirJanelaImpressaoEtiquetas(cards);
   if (!win) return;
 
@@ -1710,6 +1735,7 @@ function gerarEtiqueta(i) {
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
+    const docInfo = dadosDocumentacaoEtiqueta(p.id);
     const digitado = Number(byId("labelUnitsStock")?.value || 0);
     const qty = digitado > 0 ? digitado : Number(p.stock || 0);
 
@@ -1888,6 +1914,12 @@ function gerarEtiqueta(i) {
     <div>
       <div class="title">${p.name || ""}</div>
       <div class="qty">Quantidade atual: ${qty}</div>
+      <div class="qty">Data da impressão: ${docInfo.impressao}</div>
+      <div style="border:1px solid #111;border-radius:8px;padding:7px;margin-top:8px;font-size:13px;line-height:1.35;text-align:left">
+        <div><b>Lote:</b> ${docInfo.lote}</div>
+        <div><b>Validade:</b> ${docInfo.validade}</div>
+        <div><b>Dia que chegou:</b> ${docInfo.chegada}</div>
+      </div>
     </div>
 
     <div>

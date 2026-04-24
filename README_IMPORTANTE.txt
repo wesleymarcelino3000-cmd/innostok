@@ -82,3 +82,10 @@ Atualização:
 - botão Documentar para admin e conferente
 - documentação por produto com dia que chegou, validade e lote
 - registros salvos no Supabase na tabela product_docs
+
+
+Atualização:
+- etiquetas geradas mostram data da impressão
+- etiquetas geradas mostram lote, validade e dia que o produto chegou
+- etiquetas da fila também mostram lote, validade e dia que chegou
+- dados vêm da última documentação cadastrada do produto
