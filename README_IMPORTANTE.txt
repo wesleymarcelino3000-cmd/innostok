@@ -118,3 +118,10 @@ VERSÃO UNIFICADA FINAL:
 - mantém categoria selecionável
 - corrige fila de etiqueta restante com base na versão que funcionava
 - mantém quantidade mínima e alerta bonito
+
+Correção:
+- corrigida tela branca ao gerar etiqueta
+- etiqueta mantém lote, validade, chegada, QR simples e código de barras
+
+Correção:
+- removida a linha Quantidade documentada da etiqueta

@@ -1792,17 +1792,26 @@ function renderEtiquetas() {
 async function gerarEtiqueta(i) {
   try {
     const p = db.products[i];
-  preencherCategorias();
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
-    const docInfo = dadosDocumentacaoEtiqueta(p.id);
+    const digitado = Number(byId("labelUnitsStock")?.value || 0);
+    const qty = digitado > 0 ? digitado : Number(p.stock || 0);
+
+    let docInfo = { lote: "Não informado", validade: "Não informado", chegada: "Não informado", impressao: new Date().toLocaleDateString("pt-BR") };
+    try {
+      if (typeof dadosDocumentacaoEtiqueta === "function") {
+        docInfo = dadosDocumentacaoEtiqueta(p.id);
+      }
+    } catch(e) {}
+
     const manualLoteEtiqueta = byId("labelLoteManual")?.value.trim() || "";
     const manualValidadeEtiqueta = byId("labelValidadeManual")?.value || "";
     if (manualLoteEtiqueta) docInfo.lote = manualLoteEtiqueta;
-    if (manualValidadeEtiqueta) docInfo.validade = formatDateOnlyBR(manualValidadeEtiqueta);
-    const digitado = Number(byId("labelUnitsStock")?.value || 0);
-    const qty = digitado > 0 ? digitado : Number(p.stock || 0);
+    if (manualValidadeEtiqueta && typeof formatDateOnlyBR === "function") docInfo.validade = formatDateOnlyBR(manualValidadeEtiqueta);
+
+    const etiquetaRegistrada = await registrarEtiquetaAtiva(p.id, p.name, qty, code);
+    if (!etiquetaRegistrada) return;
 
     const win = window.open("", "_blank");
     if (!win) {
@@ -1810,14 +1819,10 @@ async function gerarEtiqueta(i) {
       return;
     }
 
-    const qrDataEtiqueta = code;
-    const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(qrDataEtiqueta);
+    const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(code);
     const barSrc = "https://barcode.tec-it.com/barcode.ashx?data=" + encodeURIComponent(code) + "&code=Code128";
 
-    const etiquetaRegistrada = await registrarEtiquetaAtiva(p.id, p.name, qty, code);
-    if (!etiquetaRegistrada) return;
-    if (!etiquetaRegistrada) return;
-
+    win.document.open();
     win.document.write(`<!doctype html>
 <html>
 <head>
@@ -1829,13 +1834,13 @@ async function gerarEtiqueta(i) {
     margin: 0;
     padding: 0;
     width: 100mm;
-    height: 150mm;
+    min-height: 150mm;
     font-family: Arial, sans-serif;
     background: #fff;
   }
   .box {
     width: 100mm;
-    height: 150mm;
+    min-height: 150mm;
     box-sizing: border-box;
     padding: 8mm;
     display: flex;
@@ -1856,13 +1861,29 @@ async function gerarEtiqueta(i) {
     font-weight: 700;
     margin-top: 4px;
   }
+  .infoBox{
+    width:100%;
+    border:1px solid #111;
+    border-radius:8px;
+    padding:7px;
+    margin-top:8px;
+    font-size:13px;
+    line-height:1.35;
+    text-align:left;
+    box-sizing:border-box;
+  }
+  .infoLine{
+    border:2px solid #111;
+    padding:6px;
+    margin-bottom:4px;
+  }
   .label {
     font-size: 14px;
     font-weight: 700;
     margin: 4px 0;
   }
   .qr {
-    width: 42mm;
+    width: 38mm;
     max-width: 100%;
     height: auto;
   }
@@ -1876,105 +1897,6 @@ async function gerarEtiqueta(i) {
     margin-top: 3px;
     word-break: break-all;
   }
-
-.hist-filters{display:grid;grid-template-columns:1fr 1fr 220px;gap:12px;margin:12px 0}
-@media(max-width:1100px){.hist-filters{grid-template-columns:1fr}}
-
-
-.edit-modal-overlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:10000; padding:18px;
-}
-.edit-modal-overlay.show{display:flex}
-.edit-modal{
-  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
-  background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(241,245,249,.96));
-  box-shadow:0 30px 90px rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.55);
-}
-.edit-modal-top{
-  padding:24px 26px 18px;
-  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
-  color:#fff;
-}
-.edit-modal-top h3{margin:0;font-size:28px}
-.edit-modal-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
-.edit-modal-body{padding:22px 24px 24px}
-.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.edit-field label{display:block;font-size:13px;font-weight:800;color:#0f172a;margin:0 0 6px 2px}
-.edit-field input,.edit-field select{
-  width:100%; padding:14px 14px; border-radius:16px; border:1px solid #cbd5e1;
-  background:#fff; font:inherit; outline:none; transition:.18s ease;
-  box-shadow:inset 0 1px 2px rgba(15,23,42,.04);
-}
-.edit-field input:focus,.edit-field select:focus{
-  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
-}
-.edit-highlight{
-  margin-bottom:18px; padding:14px 16px; border-radius:18px;
-  background:linear-gradient(135deg,#eff6ff,#dbeafe);
-  color:#1e3a8a; border:1px solid #bfdbfe; font-weight:700;
-}
-.edit-actions{
-  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
-}
-.edit-actions button{
-  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
-}
-.edit-cancel{background:#e2e8f0;color:#0f172a}
-.edit-save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 14px 28px rgba(37,99,235,.25)}
-@media(max-width:800px){
-  .edit-grid{grid-template-columns:1fr}
-  .edit-modal-top h3{font-size:24px}
-  .edit-actions button{width:100%}
-}
-
-
-.low-stock-overlay{
-  position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-  background:rgba(2,6,23,.72); backdrop-filter:blur(6px); z-index:12000; padding:18px;
-}
-.low-stock-overlay.show{display:flex}
-.low-stock-modal{
-  width:100%; max-width:720px; border-radius:28px; overflow:hidden;
-  background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(241,245,249,.97));
-  box-shadow:0 30px 90px rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.55);
-}
-.low-stock-top{
-  padding:24px 26px 18px;
-  background:linear-gradient(135deg,#031126,#0f172a,#1e3a8a);
-  color:#fff;
-}
-.low-stock-top h3{margin:0;font-size:28px}
-.low-stock-top .sub{margin-top:6px;color:#cbd5e1;font-size:14px}
-.low-stock-body{padding:22px 24px 24px; max-height:65vh; overflow:auto}
-.low-stock-list{display:grid; gap:12px}
-.low-stock-item{
-  padding:14px 16px; border-radius:18px; border:1px solid #fecaca;
-  background:linear-gradient(135deg,#fff1f2,#fef2f2);
-  box-shadow:0 8px 18px rgba(185,28,28,.08);
-}
-.low-stock-item strong{display:block; color:#7f1d1d; font-size:16px; margin-bottom:6px}
-.low-stock-meta{display:flex; gap:12px; flex-wrap:wrap; color:#991b1b; font-weight:700}
-.low-stock-chip{
-  display:inline-flex; align-items:center; gap:8px; border-radius:999px;
-  padding:8px 12px; background:#fee2e2; color:#991b1b; font-weight:800; font-size:13px;
-}
-.low-stock-actions{
-  display:flex; justify-content:flex-end; gap:12px; margin-top:20px; flex-wrap:wrap;
-}
-.low-stock-actions button{
-  min-width:140px; padding:14px 18px; border:none; border-radius:16px; cursor:pointer; font-weight:800;
-}
-.low-stock-close{
-  background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; box-shadow:0 14px 28px rgba(37,99,235,.25)
-}
-@media(max-width:800px){
-  .low-stock-top h3{font-size:24px}
-  .low-stock-actions button{width:100%}
-}
-
 </style>
 </head>
 <body>
@@ -1982,17 +1904,16 @@ async function gerarEtiqueta(i) {
     <div>
       <div class="title">${p.name || ""}</div>
       <div class="qty">Quantidade atual: ${qty}</div>
-      <div class="qty">Data da impressão: ${docInfo.impressao}</div>
-      <div style="border:1px solid #111;border-radius:8px;padding:7px;margin-top:8px;font-size:13px;line-height:1.35;text-align:left">
-        <div><b>Lote:</b> ${docInfo.lote}</div>
-        <div><b>Quantidade documentada:</b> ${Number(docInfo.quantidade || 0)}</div>
-        <div><b>Validade:</b> ${docInfo.validade}</div>
-        <div><b>Dia que chegou:</b> ${docInfo.chegada}</div>
+      <div class="qty">Data da impressão: ${docInfo.impressao || new Date().toLocaleDateString("pt-BR")}</div>
+      <div class="infoBox">
+        <div class="infoLine"><b>Lote:</b> ${docInfo.lote || "Não informado"}</div>
+        <div class="infoLine"><b>Validade:</b> ${docInfo.validade || "Não informado"}</div>
+        <div><b>Dia que chegou:</b> ${docInfo.chegada || "Não informado"}</div>
       </div>
     </div>
 
     <div>
-      <div class="label">QR Code com dados completos</div>
+      <div class="label">QR Code</div>
       <img class="qr" src="${qrSrc}" alt="QR Code">
     </div>
 
@@ -2007,7 +1928,7 @@ async function gerarEtiqueta(i) {
     window.onload = function () {
       setTimeout(function () {
         window.print();
-      }, 150);
+      }, 250);
     };
   <\/script>
 </body>
@@ -2015,7 +1936,7 @@ async function gerarEtiqueta(i) {
     win.document.close();
   } catch (e) {
     console.error("Erro etiqueta:", e);
-    alert("Erro ao gerar etiqueta.");
+    alert("Erro ao gerar etiqueta: " + (e?.message || e));
   }
 }
 
