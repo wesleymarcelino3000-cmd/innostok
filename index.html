@@ -1028,7 +1028,7 @@ function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
 
       <div style="border:1px solid #111;border-radius:8px;padding:7px;margin:8px 0;font-size:13px;line-height:1.35;text-align:left">
         <div><b>Lote:</b> ${info.lote}</div>
-        <div><b>Quantidade documentada:</b> ${Number(info.quantidade || 0)}</div>
+        
         <div><b>Validade:</b> ${info.validade}</div>
         <div><b>Dia que chegou:</b> ${info.chegada}</div>
       </div>
@@ -1959,7 +1959,7 @@ function gerarEtiqueta(i) {
       <div class="qty">Data da impressão: ${docInfo.impressao}</div>
       <div style="border:1px solid #111;border-radius:8px;padding:7px;margin-top:8px;font-size:13px;line-height:1.35;text-align:left">
         <div><b>Lote:</b> ${docInfo.lote}</div>
-        <div><b>Quantidade documentada:</b> ${Number(docInfo.quantidade || 0)}</div>
+        
         <div><b>Validade:</b> ${docInfo.validade}</div>
         <div><b>Dia que chegou:</b> ${docInfo.chegada}</div>
       </div>
