@@ -119,3 +119,6 @@ Correção:
 - ao dar baixa em uma etiqueta ativa, o restante volta para a Fila de etiquetas
 - a etiqueta ativa é marcada como consumida
 - a fila recebe a quantidade restante para imprimir nova etiqueta
+
+Atualização:
+- QR Code da etiqueta agora usa somente o código do produto (sem dados adicionais)

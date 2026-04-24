@@ -758,20 +758,6 @@ function showNotice(msg) { const el = byId("notice"); if (el) { el.textContent =
 function clearNotice() { const el = byId("notice"); if (el) el.classList.add("hidden"); }
 function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code128&scale=3&height=10&includetext=false&text=" + encodeURIComponent(text); }
 
-function montarDadosQrEtiqueta(nome, quantidade, stockLabel, info) {
-  const dados = [
-    "INNO STOK",
-    "Produto: " + (nome || ""),
-    "Quantidade: " + Number(quantidade || 0),
-    "Lote: " + (info?.lote || "Não informado"),
-    "Validade: " + (info?.validade || "Não informado"),
-    "Dia que chegou: " + (info?.chegada || "Não informado"),
-    "Data da impressão: " + (info?.impressao || new Date().toLocaleDateString('pt-BR')),
-    "Código: " + (stockLabel || "")
-  ];
-  return dados.join("\\n");
-}
-
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 function produtoAbaixoDoMinimo(p) {
   return Number(p?.min_stock || 0) > 0 && Number(p?.stock || 0) <= Number(p?.min_stock || 0);
@@ -1052,7 +1038,7 @@ function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
       <div class="label-simple-grid">
         <div>
           <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
-          <img src="${qrUrl(montarDadosQrEtiqueta(nome, quantidade, stockLabel, info))}" style="max-width:100%;display:block;margin:0 auto 6px auto">
+          <img src="${qrUrl(stockLabel || "")}" style="max-width:100%;display:block;margin:0 auto 6px auto">
         </div>
         <div>
           <div style="text-align:center;font-weight:700;margin-bottom:6px">Código de barras</div>
@@ -1848,8 +1834,8 @@ function gerarEtiqueta(i) {
       return;
     }
 
-    const qrDataEtiqueta = montarDadosQrEtiqueta(p.name, qty, code, docInfo);
-    const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(qrDataEtiqueta);
+    const qrDataEtiqueta = code;
+    const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(code);
     const barSrc = "https://barcode.tec-it.com/barcode.ashx?data=" + encodeURIComponent(code) + "&code=Code128";
 
     registrarEtiquetaAtiva(p.id, p.name, qty, code);
