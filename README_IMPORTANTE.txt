@@ -110,3 +110,7 @@ Correção:
 - campos de lote e validade agora aparecem diretamente na tela Etiquetas de estoque
 - se preenchidos, esses campos são impressos na etiqueta
 - QR Code completo mantido
+
+Atualização:
+- Categoria selecionável no cadastro de novo produto
+- mantidas todas as funções existentes

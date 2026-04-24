@@ -299,7 +299,7 @@ th{background:#f8fafc}
           <div><label>Código de barras</label><input class="app-input" id="codigoBarras"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
-          <div><label>Categoria</label><input class="app-input" id="categoria"></div>
+          <div><label>Categoria</label><select class="app-input" id="categoria"></select></div>
           <div><label>Preço</label><input class="app-input" id="preco" type="number" min="0" step="0.01"></div>
         </div>
         <div class="form-row" style="margin-top:12px">
@@ -655,6 +655,21 @@ const CATEGORIAS = [
   "Outros"
 ];
 
+
+function preencherCategoriasNovoProduto() {
+  const select = document.getElementById("categoria");
+  if (!select) return;
+
+  const atual = select.value || "";
+  select.innerHTML = CATEGORIAS.map(cat =>
+    `<option value="${cat}">${cat}</option>`
+  ).join("");
+
+  if ([...select.options].some(o => o.value === atual)) {
+    select.value = atual;
+  }
+}
+
 function preencherCategorias() {
   const select = document.getElementById("editCategoriaPremium");
   if (!select) return;
@@ -797,6 +812,7 @@ function hideAllSections() {
 }
 function showSection(id) {
   if (id === "produto") {
+    try { preencherCategoriasNovoProduto(); } catch(e) {}
     setTimeout(() => {
       try { renderProdutos(); } catch(e){}
     }, 100);
@@ -1676,7 +1692,8 @@ async function add() {
   item.stock_label = createStockLabelCode(item);
   await sb.from('products').insert(item);
   await registrarHistorico('criar_produto', 'produtos', item.name, item.stock, 'Categoria: ' + (item.category || ''));
-  ["nome","codigoBarras","categoria","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
+  ["nome","codigoBarras","preco","qtd","codigoInternoPreview"].forEach(id => { if (byId(id)) byId(id).value = ""; });
+  if (byId("categoria")) byId("categoria").selectedIndex = 0;
   if (byId("minimo")) byId("minimo").value = "0";
   await loadAll();
   render();
