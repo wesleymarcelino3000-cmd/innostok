@@ -89,3 +89,24 @@ Atualização:
 - etiquetas geradas mostram lote, validade e dia que o produto chegou
 - etiquetas da fila também mostram lote, validade e dia que chegou
 - dados vêm da última documentação cadastrada do produto
+
+Atualização:
+- campo Quantidade na documentação de produto
+- correção no salvamento da documentação no Supabase
+- quantidade documentada aparece na lista e nas etiquetas
+- SQL atualizado com coluna quantity na tabela product_docs
+
+Atualização:
+- campos manuais de lote e validade em Etiquetas de estoque
+- ao preencher esses campos, a etiqueta usa os dados digitados
+- se não preencher, continua buscando os dados cadastrados em Documentar
+
+Atualização:
+- QR Code da etiqueta agora leva dados completos
+- inclui produto, quantidade, lote, validade, dia que chegou, data da impressão e código
+- código de barras continua usando o código da etiqueta normalmente
+
+Correção:
+- campos de lote e validade agora aparecem diretamente na tela Etiquetas de estoque
+- se preenchidos, esses campos são impressos na etiqueta
+- QR Code completo mantido
