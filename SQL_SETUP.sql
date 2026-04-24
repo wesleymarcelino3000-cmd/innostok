@@ -51,3 +51,17 @@ create table if not exists public.pending_labels (
 );
 
 alter table public.pending_labels disable row level security;
+
+
+create table if not exists public.product_docs (
+  id bigint generated always as identity primary key,
+  product_id bigint,
+  product_name text,
+  arrival_date date,
+  expiration_date date,
+  lot text,
+  username text,
+  created_at timestamptz default now()
+);
+
+alter table public.product_docs disable row level security;

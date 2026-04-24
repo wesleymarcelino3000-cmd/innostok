@@ -76,3 +76,9 @@ Correção adicional:
 
 Correção:
 - impressão da etiqueta restante da fila agora mostra o conteúdo em vez de página em branco.
+
+
+Atualização:
+- botão Documentar para admin e conferente
+- documentação por produto com dia que chegou, validade e lote
+- registros salvos no Supabase na tabela product_docs

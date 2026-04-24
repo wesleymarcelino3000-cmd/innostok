@@ -238,6 +238,7 @@ th{background:#f8fafc}
       <button onclick="showSection('produto'); return false;">Novo produto</button>
       <button onclick="showSection('manual'); return false;">Baixa manual</button>
       <button id="btnVerEstoque" onclick="showSection('estoqueView'); return false;">Ver estoque</button>
+      <button id="btnDocumentar" onclick="showSection('documentarView'); return false;">Documentar</button>
       <button id="btnExportarExcel" onclick="exportarPlanilha()">Exportar Excel</button>
       <button id="historyBtn" class="hidden" onclick="showSection('historicoView'); return false;">Histórico</button>
       <button id="btnGraficos" class="hidden" onclick="showSection('graficosView'); return false;">Gráficos</button>
@@ -325,6 +326,27 @@ th{background:#f8fafc}
           <div></div>
         </div>
         <button class="success-action" style="margin-top:12px" onclick="darEntradaProduto()">Confirmar entrada</button>
+      </div>
+
+
+      <div id="documentarView" class="card hidden">
+        <h3>Documentar produto</h3>
+        <div style="color:#6b7280;margin-bottom:12px">Registre produto, dia que chegou, validade e lote.</div>
+        <div class="form-row">
+          <div><label>Produto</label><select class="app-input" id="docProduto"></select></div>
+          <div><label>Dia que chegou</label><input class="app-input" id="docDiaChegou" type="date"></div>
+        </div>
+        <div class="form-row" style="margin-top:12px">
+          <div><label>Validade</label><input class="app-input" id="docValidade" type="date"></div>
+          <div><label>Lote</label><input class="app-input" id="docLote" placeholder="Digite o lote"></div>
+        </div>
+        <button class="success-action" style="margin-top:12px" onclick="salvarDocumentacaoProduto()">Salvar documentação</button>
+        <div class="wrap" style="margin-top:16px">
+          <table>
+            <thead><tr><th>Produto</th><th>Dia que chegou</th><th>Validade</th><th>Lote</th><th>Usuário</th><th>Registro</th><th>Ações</th></tr></thead>
+            <tbody id="listaDocumentacoes"></tbody>
+          </table>
+        </div>
       </div>
 
 <div id="manual" class="card hidden">
@@ -608,7 +630,7 @@ th{background:#f8fafc}
 
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
-let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
+let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], productDocs: [], lastInternalCode: 0, sessionUser: null };
 let html5Scanner = null;
 let scannerRunning = false;
 let ultimoCodigoLido = "";
@@ -745,7 +767,7 @@ function mostrarAvisoBaixoEstoqueAdmin() {
 }
 
 function hideAllSections() {
-  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","entradaEstoque","documentarView","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -761,6 +783,7 @@ function showSection(id) {
   const target = byId(id);
 
   if (id === "estoqueView") renderEstoqueCompleto();
+  if (id === "documentarView") { preencherSelectDocumentarProduto(); renderDocumentacoesProduto(); }
   if (id === "historicoView") renderHistorico();
   if (id === "produtoHistoricoView" && typeof renderHistoricoProduto === "function") renderHistoricoProduto();
   if (id === "graficosView") {
@@ -808,6 +831,102 @@ function formatDateTime(v) {
   } catch (e) {
     return "";
   }
+}
+
+
+async function loadProductDocs() {
+  try {
+    const res = await sb.from('product_docs').select('*').order('id', { ascending: false });
+    db.productDocs = res.data || [];
+  } catch (e) {
+    db.productDocs = [];
+  }
+}
+
+function preencherSelectDocumentarProduto() {
+  const sel = byId("docProduto");
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecione</option>' + (db.products || []).map(p =>
+    `<option value="${p.id}">${p.name}${p.barcode ? ' - ' + p.barcode : ''}</option>`
+  ).join("");
+}
+
+function formatDateOnlyBR(v) {
+  if (!v) return "";
+  try {
+    const partes = String(v).split("-");
+    if (partes.length === 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
+    return new Date(v).toLocaleDateString('pt-BR');
+  } catch(e) {
+    return String(v || "");
+  }
+}
+
+async function salvarDocumentacaoProduto() {
+  if (!(isAdmin() || isConferente())) return alert("Somente admin ou conferente pode documentar produto.");
+
+  const productId = byId("docProduto")?.value || "";
+  const diaChegou = byId("docDiaChegou")?.value || "";
+  const validade = byId("docValidade")?.value || "";
+  const lote = byId("docLote")?.value.trim() || "";
+
+  if (!productId) return alert("Selecione um produto.");
+  if (!diaChegou) return alert("Informe o dia que chegou.");
+  if (!validade) return alert("Informe a validade.");
+  if (!lote) return alert("Informe o lote.");
+
+  const p = (db.products || []).find(x => Number(x.id) === Number(productId));
+  if (!p) return alert("Produto não encontrado.");
+
+  await sb.from('product_docs').insert({
+    product_id: p.id,
+    product_name: p.name || "",
+    arrival_date: diaChegou,
+    expiration_date: validade,
+    lot: lote,
+    username: currentUser()?.username || ""
+  });
+
+  await registrarHistorico('documentar_produto', 'documentar', p.name || "", 0,
+    'Chegou: ' + formatDateOnlyBR(diaChegou) + ' | Validade: ' + formatDateOnlyBR(validade) + ' | Lote: ' + lote
+  );
+
+  byId("docProduto").value = "";
+  byId("docDiaChegou").value = "";
+  byId("docValidade").value = "";
+  byId("docLote").value = "";
+
+  await loadProductDocs();
+  renderDocumentacoesProduto();
+  alert("Documentação salva com sucesso.");
+}
+
+async function excluirDocumentacaoProduto(i) {
+  if (!(isAdmin() || isConferente())) return alert("Somente admin ou conferente pode excluir documentação.");
+  const item = db.productDocs[i];
+  if (!item) return;
+  if (!confirm("Deseja excluir esta documentação?")) return;
+  await sb.from('product_docs').delete().eq('id', item.id);
+  await registrarHistorico('excluir_documentacao', 'documentar', item.product_name || "", 0, 'Lote: ' + (item.lot || ''));
+  await loadProductDocs();
+  renderDocumentacoesProduto();
+}
+
+function renderDocumentacoesProduto() {
+  const tbody = byId("listaDocumentacoes");
+  if (!tbody) return;
+  const rows = (db.productDocs || []).map((d, i) => `
+    <tr>
+      <td>${d.product_name || ""}</td>
+      <td>${formatDateOnlyBR(d.arrival_date)}</td>
+      <td>${formatDateOnlyBR(d.expiration_date)}</td>
+      <td>${d.lot || ""}</td>
+      <td>${d.username || ""}</td>
+      <td>${formatDateTime(d.created_at)}</td>
+      <td><button class="danger" onclick="excluirDocumentacaoProduto(${i})">Excluir</button></td>
+    </tr>
+  `).join("");
+  tbody.innerHTML = rows || `<tr><td colspan="7">Nenhuma documentação cadastrada.</td></tr>`;
 }
 
 async function loadPendingLabels() {
@@ -1261,6 +1380,7 @@ async function loadAll() {
   db.products = prodRes.data || [];
   await loadHistorico();
   await loadPendingLabels();
+  await loadProductDocs();
   try { preencherSelectProduto(); } catch(e) {}
   try { renderEtiquetas(); } catch(e) {}
   db.lastInternalCode = db.products.reduce((m, p) => {
@@ -1349,6 +1469,7 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", true);
     setVisible("btnBaixaManual", true);
     setVisible("btnExportarExcel", true);
+    setVisible("btnDocumentar", true);
     setVisible("btnEtiquetas", true);
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
@@ -1361,6 +1482,7 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", true);
     setVisible("btnBaixaManual", true);
     setVisible("btnExportarExcel", true);
+    setVisible("btnDocumentar", true);
     setVisible("btnEtiquetas", true);
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
@@ -1373,6 +1495,7 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", false);
     setVisible("btnBaixaManual", false);
     setVisible("btnExportarExcel", false);
+    setVisible("btnDocumentar", false);
     setVisible("btnEtiquetas", false);
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
@@ -1386,6 +1509,7 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", false);
     setVisible("btnBaixaManual", false);
     setVisible("btnExportarExcel", false);
+    setVisible("btnDocumentar", false);
     setVisible("btnEtiquetas", false);
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
@@ -1938,6 +2062,8 @@ function render() {
   try { renderEstoqueCompleto(); } catch(e) {}
   try { renderHistorico(); } catch(e) {}
   try { renderFilaEtiquetas(); } catch(e) {}
+  try { preencherSelectDocumentarProduto(); } catch(e) {}
+  try { renderDocumentacoesProduto(); } catch(e) {}
   try { preencherSelectGraficoProdutos(); } catch(e) {}
   try { aplicarPermissaoGraficos(); } catch(e) {}
 }
