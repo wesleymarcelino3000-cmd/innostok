@@ -238,7 +238,6 @@ th{background:#f8fafc}
       <button onclick="showSection('produto'); return false;">Novo produto</button>
       <button onclick="showSection('manual'); return false;">Baixa manual</button>
       <button id="btnVerEstoque" onclick="showSection('estoqueView'); return false;">Ver estoque</button>
-      <button id="btnDocumentar" onclick="showSection('documentarView'); return false;">Documentar</button>
       <button id="btnExportarExcel" onclick="exportarPlanilha()">Exportar Excel</button>
       <button id="historyBtn" class="hidden" onclick="showSection('historicoView'); return false;">Histórico</button>
       <button id="btnGraficos" class="hidden" onclick="showSection('graficosView'); return false;">Gráficos</button>
@@ -326,31 +325,6 @@ th{background:#f8fafc}
           <div></div>
         </div>
         <button class="success-action" style="margin-top:12px" onclick="darEntradaProduto()">Confirmar entrada</button>
-      </div>
-
-
-      <div id="documentarView" class="card hidden">
-        <h3>Documentar produto</h3>
-        <div style="color:#6b7280;margin-bottom:12px">Registre produto, dia que chegou, validade e lote.</div>
-        <div class="form-row">
-          <div><label>Produto</label><select class="app-input" id="docProduto"></select></div>
-          <div><label>Dia que chegou</label><input class="app-input" id="docDiaChegou" type="date"></div>
-        </div>
-        <div class="form-row" style="margin-top:12px">
-          <div><label>Validade</label><input class="app-input" id="docValidade" type="date"></div>
-          <div><label>Lote</label><input class="app-input" id="docLote" placeholder="Digite o lote"></div>
-        </div>
-        <div class="form-row" style="margin-top:12px">
-          <div><label>Quantidade</label><input class="app-input" id="docQuantidade" type="number" min="0" value="0"></div>
-          <div></div>
-        </div>
-        <button class="success-action" style="margin-top:12px" onclick="salvarDocumentacaoProduto()">Salvar documentação</button>
-        <div class="wrap" style="margin-top:16px">
-          <table>
-            <thead><tr><th>Produto</th><th>Dia que chegou</th><th>Validade</th><th>Lote</th><th>Quantidade</th><th>Usuário</th><th>Registro</th><th>Ações</th></tr></thead>
-            <tbody id="listaDocumentacoes"></tbody>
-          </table>
-        </div>
       </div>
 
 <div id="manual" class="card hidden">
@@ -446,10 +420,6 @@ th{background:#f8fafc}
         </div>
         <div class="form-row" style="margin-bottom:12px">
           <div><label>Tamanho</label><input class="app-input" value="100 x 150 mm" disabled></div><div></div>
-        </div>
-        <div class="form-row" style="margin-bottom:12px">
-          <div><label>Lote para imprimir na etiqueta</label><input class="app-input" id="labelLoteManual" placeholder="Ex: BHT0428A"></div>
-          <div><label>Validade para imprimir na etiqueta</label><input class="app-input" id="labelValidadeManual" type="date"></div>
         </div>
         <div class="wrap">
           <table><thead><tr><th>Produto</th><th>Código de barras</th><th>Estoque</th><th>Ações</th></tr></thead><tbody id="listaEtiquetas"></tbody></table>
@@ -638,7 +608,7 @@ th{background:#f8fafc}
 
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
-let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], productDocs: [], lastInternalCode: 0, sessionUser: null };
+let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], lastInternalCode: 0, sessionUser: null };
 let html5Scanner = null;
 let scannerRunning = false;
 let ultimoCodigoLido = "";
@@ -659,15 +629,11 @@ const CATEGORIAS = [
 function preencherCategoriasNovoProduto() {
   const select = document.getElementById("categoria");
   if (!select) return;
-
   const atual = select.value || "";
   select.innerHTML = CATEGORIAS.map(cat =>
     `<option value="${cat}">${cat}</option>`
   ).join("");
-
-  if ([...select.options].some(o => o.value === atual)) {
-    select.value = atual;
-  }
+  if ([...select.options].some(o => o.value === atual)) select.value = atual;
 }
 
 function preencherCategorias() {
@@ -757,7 +723,6 @@ function createStockLabelCode(p) { return "ESTOQUE-" + p.internal_code; }
 function showNotice(msg) { const el = byId("notice"); if (el) { el.textContent = msg; el.classList.remove("hidden"); } }
 function clearNotice() { const el = byId("notice"); if (el) el.classList.add("hidden"); }
 function barcodeUrl(text) { return "https://bwipjs-api.metafloor.com/?bcid=code128&scale=3&height=10&includetext=false&text=" + encodeURIComponent(text); }
-
 function qrUrl(text) { return "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(text); }
 function produtoAbaixoDoMinimo(p) {
   return Number(p?.min_stock || 0) > 0 && Number(p?.stock || 0) <= Number(p?.min_stock || 0);
@@ -791,7 +756,7 @@ function mostrarAvisoBaixoEstoqueAdmin() {
 }
 
 function hideAllSections() {
-  ["account","users","produto","entradaEstoque","documentarView","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
+  ["account","users","produto","entradaEstoque","manual","estoqueView","historicoView","produtoHistoricoView","graficosView","etiquetas","filaEtiquetas","scannerMobile"].forEach(id => {
     const el = byId(id);
     if (el) el.classList.add("hidden");
   });
@@ -808,7 +773,6 @@ function showSection(id) {
   const target = byId(id);
 
   if (id === "estoqueView") renderEstoqueCompleto();
-  if (id === "documentarView") { preencherSelectDocumentarProduto(); renderDocumentacoesProduto(); }
   if (id === "historicoView") renderHistorico();
   if (id === "produtoHistoricoView" && typeof renderHistoricoProduto === "function") renderHistoricoProduto();
   if (id === "graficosView") {
@@ -842,6 +806,7 @@ function showSection(id) {
   }
   if (id === "manual") {
     try { preencherSelectProduto(); } catch(e) {}
+  try { preencherCategoriasNovoProduto(); } catch(e) {}
   }
   if (id === "etiquetas") {
     try { renderEtiquetas(); } catch(e) {}
@@ -856,132 +821,6 @@ function formatDateTime(v) {
   } catch (e) {
     return "";
   }
-}
-
-
-async function loadProductDocs() {
-  try {
-    const res = await sb.from('product_docs').select('*').order('id', { ascending: false });
-    db.productDocs = res.data || [];
-  } catch (e) {
-    db.productDocs = [];
-  }
-}
-
-function preencherSelectDocumentarProduto() {
-  const sel = byId("docProduto");
-  if (!sel) return;
-  sel.innerHTML = '<option value="">Selecione</option>' + (db.products || []).map(p =>
-    `<option value="${p.id}">${p.name}${p.barcode ? ' - ' + p.barcode : ''}</option>`
-  ).join("");
-}
-
-function formatDateOnlyBR(v) {
-  if (!v) return "";
-  try {
-    const partes = String(v).split("-");
-    if (partes.length === 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
-    return new Date(v).toLocaleDateString('pt-BR');
-  } catch(e) {
-    return String(v || "");
-  }
-}
-
-
-function getDocumentacaoMaisRecenteProduto(productId) {
-  const docs = (db.productDocs || []).filter(d => Number(d.product_id) === Number(productId));
-  if (!docs.length) return null;
-  return docs.sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
-}
-
-function dadosDocumentacaoEtiqueta(productId) {
-  const doc = getDocumentacaoMaisRecenteProduto(productId);
-  return {
-    lote: doc?.lot || "Não informado",
-    validade: doc?.expiration_date ? formatDateOnlyBR(doc.expiration_date) : "Não informado",
-    chegada: doc?.arrival_date ? formatDateOnlyBR(doc.arrival_date) : "Não informado",
-    quantidade: Number(doc?.quantity || 0),
-    impressao: new Date().toLocaleDateString('pt-BR')
-  };
-}
-
-async function salvarDocumentacaoProduto() {
-  if (!(isAdmin() || isConferente())) return alert("Somente admin ou conferente pode documentar produto.");
-
-  const productId = byId("docProduto")?.value || "";
-  const diaChegou = byId("docDiaChegou")?.value || "";
-  const validade = byId("docValidade")?.value || "";
-  const lote = byId("docLote")?.value.trim() || "";
-  const quantidade = Number(byId("docQuantidade")?.value || 0);
-
-  if (!productId) return alert("Selecione um produto.");
-  if (!diaChegou) return alert("Informe o dia que chegou.");
-  if (!validade) return alert("Informe a validade.");
-  if (!lote) return alert("Informe o lote.");
-  if (!Number.isFinite(quantidade) || quantidade < 0) return alert("Informe uma quantidade válida.");
-
-  const p = (db.products || []).find(x => Number(x.id) === Number(productId));
-  if (!p) return alert("Produto não encontrado.");
-
-  const payload = {
-    product_id: p.id,
-    product_name: p.name || "",
-    arrival_date: diaChegou,
-    expiration_date: validade,
-    lot: lote,
-    quantity: quantidade,
-    username: currentUser()?.username || ""
-  };
-
-  const res = await sb.from('product_docs').insert(payload);
-  if (res && res.error) {
-    console.error("Erro ao salvar documentação:", res.error);
-    alert("Não foi possível salvar. Rode o SQL_SETUP.sql atualizado no Supabase e tente novamente.");
-    return;
-  }
-
-  await registrarHistorico('documentar_produto', 'documentar', p.name || "", quantidade,
-    'Chegou: ' + formatDateOnlyBR(diaChegou) + ' | Validade: ' + formatDateOnlyBR(validade) + ' | Lote: ' + lote + ' | Quantidade: ' + quantidade
-  );
-
-  byId("docProduto").value = "";
-  byId("docDiaChegou").value = "";
-  byId("docValidade").value = "";
-  byId("docLote").value = "";
-  byId("docQuantidade").value = "0";
-
-  await loadProductDocs();
-  renderDocumentacoesProduto();
-  alert("Documentação salva com sucesso.");
-}
-
-async function excluirDocumentacaoProduto(i) {
-  if (!(isAdmin() || isConferente())) return alert("Somente admin ou conferente pode excluir documentação.");
-  const item = db.productDocs[i];
-  if (!item) return;
-  if (!confirm("Deseja excluir esta documentação?")) return;
-  await sb.from('product_docs').delete().eq('id', item.id);
-  await registrarHistorico('excluir_documentacao', 'documentar', item.product_name || "", 0, 'Lote: ' + (item.lot || ''));
-  await loadProductDocs();
-  renderDocumentacoesProduto();
-}
-
-function renderDocumentacoesProduto() {
-  const tbody = byId("listaDocumentacoes");
-  if (!tbody) return;
-  const rows = (db.productDocs || []).map((d, i) => `
-    <tr>
-      <td>${d.product_name || ""}</td>
-      <td>${formatDateOnlyBR(d.arrival_date)}</td>
-      <td>${formatDateOnlyBR(d.expiration_date)}</td>
-      <td>${d.lot || ""}</td>
-      <td>${Number(d.quantity || 0)}</td>
-      <td>${d.username || ""}</td>
-      <td>${formatDateTime(d.created_at)}</td>
-      <td><button class="danger" onclick="excluirDocumentacaoProduto(${i})">Excluir</button></td>
-    </tr>
-  `).join("");
-  tbody.innerHTML = rows || `<tr><td colspan="8">Nenhuma documentação cadastrada.</td></tr>`;
 }
 
 async function loadPendingLabels() {
@@ -1020,21 +859,12 @@ function renderFilaEtiquetas() {
   tbody.innerHTML = rows || `<tr><td colspan="5">Nenhuma etiqueta pendente.</td></tr>`;
 }
 
-function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
-  const info = docInfo || { lote: "Não informado", validade: "Não informado", chegada: "Não informado", impressao: new Date().toLocaleDateString('pt-BR') };
+function montarCardEtiqueta(nome, quantidade, stockLabel) {
   return `
     <div class="label-card">
       <div class="label-main-name">${nome || ""}</div>
       <div class="label-qty">Quantidade atual: ${Number(quantidade || 0)}</div>
-      <div style="font-size:14px;font-weight:800;text-align:center;margin-bottom:8px">Data da impressão: ${info.impressao}</div>
-
-      <div style="border:1px solid #111;border-radius:8px;padding:7px;margin:8px 0;font-size:13px;line-height:1.35;text-align:left">
-        <div><b>Lote:</b> ${info.lote}</div>
-        
-        <div><b>Validade:</b> ${info.validade}</div>
-        <div><b>Dia que chegou:</b> ${info.chegada}</div>
-      </div>
-
+      <div style=\"font-size:14px;font-weight:700;text-align:center;margin-bottom:8px\">Data: ${new Date().toLocaleDateString('pt-BR')}</div>
       <div class="label-simple-grid">
         <div>
           <div style="text-align:center;font-weight:700;margin-bottom:6px">QR Code</div>
@@ -1051,19 +881,23 @@ function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
 
 async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
   try {
+    await loadPendingLabels();
+
     const existingActive = getActiveLabelRecord(productId);
     const pending = getPendingLabelRecord(productId);
+
+    let res;
     if (existingActive) {
-      await sb.from('pending_labels').update({
+      res = await sb.from('pending_labels').update({
         product_name: productName || "",
         quantity_remaining: Number(qty || 0),
         stock_label: stockLabel || "",
         status: 'ativa'
       }).eq('id', existingActive.id);
     } else if (pending && Number(pending.quantity_remaining) === Number(qty || 0)) {
-      await sb.from('pending_labels').update({ status: 'ativa', stock_label: stockLabel || "" }).eq('id', pending.id);
+      res = await sb.from('pending_labels').update({ status: 'ativa', stock_label: stockLabel || "" }).eq('id', pending.id);
     } else {
-      await sb.from('pending_labels').insert({
+      res = await sb.from('pending_labels').insert({
         product_id: productId,
         product_name: productName || "",
         quantity_remaining: Number(qty || 0),
@@ -1071,9 +905,21 @@ async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
         stock_label: stockLabel || ""
       });
     }
+
+    if (res && res.error) {
+      console.error("Erro ao registrar etiqueta ativa:", res.error);
+      alert("Não foi possível registrar a etiqueta ativa. Verifique o SQL/permissões da tabela pending_labels.");
+      return false;
+    }
+
     await loadPendingLabels();
     renderFilaEtiquetas();
-  } catch (e) {}
+    return true;
+  } catch (e) {
+    console.error("Erro ao registrar etiqueta ativa:", e);
+    alert("Erro ao registrar etiqueta ativa.");
+    return false;
+  }
 }
 
 async function enviarRestanteParaFila(productId, productName, remaining, stockLabel) {
@@ -1321,7 +1167,7 @@ async function imprimirEtiquetaPendente(i) {
   const item = pendentes[i];
   if (!item) return;
 
-  const card = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label, dadosDocumentacaoEtiqueta(item.product_id));
+  const card = montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label);
   const win = abrirJanelaImpressaoEtiquetas(card);
   if (!win) return;
 
@@ -1336,67 +1182,12 @@ async function imprimirFilaEtiquetas() {
     return;
   }
 
-  const cards = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label, dadosDocumentacaoEtiqueta(item.product_id))).join("");
+  const cards = items.map(item => montarCardEtiqueta(item.product_name, item.quantity_remaining, item.stock_label)).join("");
   const win = abrirJanelaImpressaoEtiquetas(cards);
   if (!win) return;
 
   for (const item of items) {
     await marcarPendenteComoAtiva(item);
-  }
-}
-
-
-async function processarRestanteEtiquetaAposBaixa(productId, productName, stockLabel, qtdBaixada) {
-  try {
-    await loadPendingLabels();
-
-    const etiquetaAtiva = (db.pendingLabels || []).find(x =>
-      Number(x.product_id) === Number(productId) && String(x.status || "") === "ativa"
-    );
-
-    if (!etiquetaAtiva) return;
-
-    const quantidadeEtiqueta = Number(etiquetaAtiva.quantity_remaining || 0);
-    const baixa = Number(qtdBaixada || 0);
-
-    if (quantidadeEtiqueta <= 0 || baixa <= 0) return;
-
-    if (baixa < quantidadeEtiqueta) {
-      const restante = quantidadeEtiqueta - baixa;
-
-      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
-
-      const existentePendente = (db.pendingLabels || []).find(x =>
-        Number(x.product_id) === Number(productId) && String(x.status || "") === "pendente"
-      );
-
-      if (existentePendente) {
-        await sb.from('pending_labels').update({
-          product_name: productName || "",
-          quantity_remaining: restante,
-          stock_label: stockLabel || "",
-          status: 'pendente'
-        }).eq('id', existentePendente.id);
-      } else {
-        await sb.from('pending_labels').insert({
-          product_id: productId,
-          product_name: productName || "",
-          quantity_remaining: restante,
-          stock_label: stockLabel || "",
-          status: 'pendente'
-        });
-      }
-
-      await loadPendingLabels();
-      renderFilaEtiquetas();
-      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
-    } else {
-      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
-      await loadPendingLabels();
-      renderFilaEtiquetas();
-    }
-  } catch (e) {
-    console.error("Erro ao processar restante da etiqueta:", e);
   }
 }
 
@@ -1499,7 +1290,6 @@ async function loadAll() {
   db.products = prodRes.data || [];
   await loadHistorico();
   await loadPendingLabels();
-  await loadProductDocs();
   try { preencherSelectProduto(); } catch(e) {}
   try { renderEtiquetas(); } catch(e) {}
   db.lastInternalCode = db.products.reduce((m, p) => {
@@ -1588,7 +1378,6 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", true);
     setVisible("btnBaixaManual", true);
     setVisible("btnExportarExcel", true);
-    setVisible("btnDocumentar", true);
     setVisible("btnEtiquetas", true);
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
@@ -1601,7 +1390,6 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", true);
     setVisible("btnBaixaManual", true);
     setVisible("btnExportarExcel", true);
-    setVisible("btnDocumentar", true);
     setVisible("btnEtiquetas", true);
     setVisible("btnFilaEtiquetas", true);
     setVisible("btnScanner", true);
@@ -1614,7 +1402,6 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", false);
     setVisible("btnBaixaManual", false);
     setVisible("btnExportarExcel", false);
-    setVisible("btnDocumentar", false);
     setVisible("btnEtiquetas", false);
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
@@ -1628,7 +1415,6 @@ function applyUserPermissions() {
     setVisible("btnEntradaEstoque", false);
     setVisible("btnBaixaManual", false);
     setVisible("btnExportarExcel", false);
-    setVisible("btnDocumentar", false);
     setVisible("btnEtiquetas", false);
     setVisible("btnFilaEtiquetas", false);
     setVisible("btnScanner", false);
@@ -1803,8 +1589,20 @@ async function registrarManual() {
   await loadAll();
   render();
 
-  if (tipo === 'saida') {
-    await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtdm);
+  await loadPendingLabels();
+  const etiquetaAtiva = getActiveLabelRecord(p.id);
+  const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
+  if (tipo === 'saida' && etiquetaAtual > 0) {
+    if (qtdm < etiquetaAtual) {
+      const restante = etiquetaAtual - qtdm;
+      await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
+      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+    } else {
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await loadPendingLabels();
+      renderFilaEtiquetas();
+      alert("Etiqueta consumida completamente.");
+    }
   }
 }
 function renderEtiquetas() {
@@ -1813,18 +1611,13 @@ function renderEtiquetas() {
   const rows = (db.products || []).map((p, i) => `<tr><td>${p.name}</td><td>${p.barcode || ''}</td><td>${p.stock}</td><td><button class="warn-action" onclick="gerarEtiqueta(${i})">Gerar etiqueta</button></td></tr>`).join("");
   tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
-function gerarEtiqueta(i) {
+async function gerarEtiqueta(i) {
   try {
     const p = db.products[i];
   preencherCategorias();
     if (!p) return;
 
     const code = p.stock_label || p.barcode || p.name || "";
-    const docInfo = dadosDocumentacaoEtiqueta(p.id);
-    const manualLoteEtiqueta = byId("labelLoteManual")?.value.trim() || "";
-    const manualValidadeEtiqueta = byId("labelValidadeManual")?.value || "";
-    if (manualLoteEtiqueta) docInfo.lote = manualLoteEtiqueta;
-    if (manualValidadeEtiqueta) docInfo.validade = formatDateOnlyBR(manualValidadeEtiqueta);
     const digitado = Number(byId("labelUnitsStock")?.value || 0);
     const qty = digitado > 0 ? digitado : Number(p.stock || 0);
 
@@ -1834,11 +1627,11 @@ function gerarEtiqueta(i) {
       return;
     }
 
-    const qrDataEtiqueta = code;
     const qrSrc = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + encodeURIComponent(code);
     const barSrc = "https://barcode.tec-it.com/barcode.ashx?data=" + encodeURIComponent(code) + "&code=Code128";
 
-    registrarEtiquetaAtiva(p.id, p.name, qty, code);
+    const etiquetaRegistrada = await registrarEtiquetaAtiva(p.id, p.name, qty, code);
+    if (!etiquetaRegistrada) return;
 
     win.document.write(`<!doctype html>
 <html>
@@ -2004,17 +1797,10 @@ function gerarEtiqueta(i) {
     <div>
       <div class="title">${p.name || ""}</div>
       <div class="qty">Quantidade atual: ${qty}</div>
-      <div class="qty">Data da impressão: ${docInfo.impressao}</div>
-      <div style="border:1px solid #111;border-radius:8px;padding:7px;margin-top:8px;font-size:13px;line-height:1.35;text-align:left">
-        <div><b>Lote:</b> ${docInfo.lote}</div>
-        
-        <div><b>Validade:</b> ${docInfo.validade}</div>
-        <div><b>Dia que chegou:</b> ${docInfo.chegada}</div>
-      </div>
     </div>
 
     <div>
-      <div class="label">QR Code com dados completos</div>
+      <div class="label">QR Code</div>
       <img class="qr" src="${qrSrc}" alt="QR Code">
     </div>
 
@@ -2145,7 +1931,23 @@ async function darBaixaScanner() {
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
 
-  await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtd);
+  await loadPendingLabels();
+  const etiquetaAtiva = getActiveLabelRecord(p.id);
+  const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
+  if (etiquetaAtual > 0) {
+    if (qtd < etiquetaAtual) {
+      const restante = etiquetaAtual - qtd;
+      await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
+      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+    } else {
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await loadPendingLabels();
+      renderFilaEtiquetas();
+      alert("Etiqueta consumida completamente.");
+    }
+  } else {
+    console.log("Baixa realizada sem etiqueta ativa para este produto.");
+  }
 }
 async function excluirProduto(i) {
   if (isOperador()) return alert("Operador não pode excluir produto.");
@@ -2173,8 +1975,6 @@ function render() {
   try { renderEstoqueCompleto(); } catch(e) {}
   try { renderHistorico(); } catch(e) {}
   try { renderFilaEtiquetas(); } catch(e) {}
-  try { preencherSelectDocumentarProduto(); } catch(e) {}
-  try { renderDocumentacoesProduto(); } catch(e) {}
   try { preencherSelectGraficoProdutos(); } catch(e) {}
   try { aplicarPermissaoGraficos(); } catch(e) {}
 }
