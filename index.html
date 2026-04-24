@@ -1359,6 +1359,61 @@ async function imprimirFilaEtiquetas() {
   }
 }
 
+
+async function processarRestanteEtiquetaAposBaixa(productId, productName, stockLabel, qtdBaixada) {
+  try {
+    await loadPendingLabels();
+
+    const etiquetaAtiva = (db.pendingLabels || []).find(x =>
+      Number(x.product_id) === Number(productId) && String(x.status || "") === "ativa"
+    );
+
+    if (!etiquetaAtiva) return;
+
+    const quantidadeEtiqueta = Number(etiquetaAtiva.quantity_remaining || 0);
+    const baixa = Number(qtdBaixada || 0);
+
+    if (quantidadeEtiqueta <= 0 || baixa <= 0) return;
+
+    if (baixa < quantidadeEtiqueta) {
+      const restante = quantidadeEtiqueta - baixa;
+
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+
+      const existentePendente = (db.pendingLabels || []).find(x =>
+        Number(x.product_id) === Number(productId) && String(x.status || "") === "pendente"
+      );
+
+      if (existentePendente) {
+        await sb.from('pending_labels').update({
+          product_name: productName || "",
+          quantity_remaining: restante,
+          stock_label: stockLabel || "",
+          status: 'pendente'
+        }).eq('id', existentePendente.id);
+      } else {
+        await sb.from('pending_labels').insert({
+          product_id: productId,
+          product_name: productName || "",
+          quantity_remaining: restante,
+          stock_label: stockLabel || "",
+          status: 'pendente'
+        });
+      }
+
+      await loadPendingLabels();
+      renderFilaEtiquetas();
+      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
+    } else {
+      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
+      await loadPendingLabels();
+      renderFilaEtiquetas();
+    }
+  } catch (e) {
+    console.error("Erro ao processar restante da etiqueta:", e);
+  }
+}
+
 async function registrarHistorico(action, source, productName, quantity, details) {
   try {
     let res = await sb.from('movements').insert({
@@ -1762,18 +1817,8 @@ async function registrarManual() {
   await loadAll();
   render();
 
-  const etiquetaAtiva = getActiveLabelRecord(p.id);
-  const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
-  if (tipo === 'saida' && etiquetaAtual > 0) {
-    if (qtdm < etiquetaAtual) {
-      const restante = etiquetaAtual - qtdm;
-      await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
-      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
-    } else {
-      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
-      await loadPendingLabels();
-      renderFilaEtiquetas();
-    }
+  if (tipo === 'saida') {
+    await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtdm);
   }
 }
 function renderEtiquetas() {
@@ -2114,19 +2159,7 @@ async function darBaixaScanner() {
   playBeep();
   showBigOk("BAIXA DE " + qtd + " UNIDADE(S)");
 
-  const etiquetaAtiva = getActiveLabelRecord(p.id);
-  const etiquetaAtual = Number(etiquetaAtiva?.quantity_remaining || 0);
-  if (etiquetaAtual > 0) {
-    if (qtd < etiquetaAtual) {
-      const restante = etiquetaAtual - qtd;
-      await enviarRestanteParaFila(p.id, p.name, restante, p.stock_label);
-      alert("Etiqueta restante enviada para a fila: " + restante + " unidade(s).");
-    } else {
-      await sb.from('pending_labels').update({ status: 'consumida' }).eq('id', etiquetaAtiva.id);
-      await loadPendingLabels();
-      renderFilaEtiquetas();
-    }
-  }
+  await processarRestanteEtiquetaAposBaixa(p.id, p.name, p.stock_label, qtd);
 }
 async function excluirProduto(i) {
   if (isOperador()) return alert("Operador não pode excluir produto.");

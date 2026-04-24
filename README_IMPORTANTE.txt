@@ -114,3 +114,8 @@ Correção:
 Atualização:
 - Categoria selecionável no cadastro de novo produto
 - mantidas todas as funções existentes
+
+Correção:
+- ao dar baixa em uma etiqueta ativa, o restante volta para a Fila de etiquetas
+- a etiqueta ativa é marcada como consumida
+- a fila recebe a quantidade restante para imprimir nova etiqueta
