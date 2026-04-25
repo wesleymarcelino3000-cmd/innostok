@@ -28,7 +28,7 @@ html{scroll-behavior:smooth} body{margin:0;font-family:Arial,sans-serif;backgrou
 .success-action{background:#16a34a;color:#fff}
 .danger{background:#fee2e2;color:#991b1b}
 .layout{display:grid;grid-template-columns:290px 1fr;min-height:100vh}
-.sidebar{background:var(--sidebar);color:#fff;padding:20px;min-height:100vh;position:sticky;top:0;align-self:start}
+.sidebar{background:var(--sidebar);color:#fff;padding:20px;min-height:100vh;height:100vh;overflow-y:auto;position:sticky;top:0;align-self:start;scrollbar-width:thin}
 .sidebar img{height:48px;margin-bottom:10px}
 .sidebar h2{margin:8px 0 4px;font-size:28px}
 .sidebar .sub{color:#cbd5e1;margin-bottom:18px;font-size:18px}
@@ -85,7 +85,7 @@ th{background:#f8fafc}
 @media(max-width:1100px){
   .layout,.g3,.form-row,.form-row-3,.quick-qty{grid-template-columns:1fr}
   .main{padding:14px;overflow:visible !important;height:auto !important}
-  .sidebar{position:relative !important;top:auto !important;min-height:auto !important}
+  .sidebar{position:relative !important;top:auto !important;min-height:auto !important;height:auto !important;overflow-y:visible !important}
   body{overflow:auto !important}
 }
 
@@ -289,7 +289,7 @@ th{background:#f8fafc}
             <div><label>Senha</label><input class="app-input" id="uSenha"></div>
           </div>
           <div class="form-row" style="margin-top:12px">
-            <div><label>Nível</label><select id="uRole" class="app-input" onchange="atualizarPermissoesCadastroPorRole()"><option value="operador">Operador</option><option value="conferente">Conferente</option><option value="admin">Admin</option></select></div>
+            <div><label>Nível</label><select id="uRole" class="app-input" onchange="atualizarPermissoesCadastroPorRole()"><option value="operador">Operador</option><option value="conferente">Conferente</option><option value="sac">SAC</option><option value="admin">Admin</option></select></div>
             <div></div>
           </div>
           <div class="perm-box">
@@ -774,6 +774,17 @@ function loadSession() { db.sessionUser = localStorage.getItem("inno_stock_onlin
 function currentUser() { return db.users.find(u => u.username === db.sessionUser) || null; }
 function isAdmin() { const u = currentUser(); return !!u && u.role === "admin"; }
 function isConferente() { const u = currentUser(); return !!u && u.role === "conferente"; }
+
+function roleLabel(role) {
+  const mapa = {
+    admin: "Admin",
+    conferente: "Conferente",
+    operador: "Operador",
+    sac: "SAC"
+  };
+  return mapa[role] || "Usuário";
+}
+
 function isOperador() { const u = currentUser(); return !!u && u.role === "operador"; }
 
 let usuarioPermissaoEditIndex = null;
@@ -795,6 +806,7 @@ const PERMISSOES_SISTEMA = [
 const PERMISSOES_PADRAO = {
   admin: PERMISSOES_SISTEMA.map(p => p.key),
   conferente: ["account","novo_produto","entrada_estoque","baixa_manual","ver_estoque","documentar","exportar_excel","etiquetas","fila_etiquetas","scanner"],
+  sac: ["account","ver_estoque","historico"],
   operador: ["account","ver_estoque"]
 };
 function normalizarPermissoesUser(u) {
@@ -1130,8 +1142,14 @@ function renderDocumentacoesProduto() {
 async function loadPendingLabels() {
   try {
     const res = await sb.from('pending_labels').select('*').order('id', { ascending: false });
+    if (res && res.error) {
+      console.error("Erro ao carregar pending_labels:", res.error);
+      db.pendingLabels = [];
+      return;
+    }
     db.pendingLabels = res.data || [];
   } catch (e) {
+    console.error("Erro ao carregar pending_labels:", e);
     db.pendingLabels = [];
   }
 }
@@ -1190,40 +1208,82 @@ function montarCardEtiqueta(nome, quantidade, stockLabel, docInfo) {
 }
 
 async function registrarEtiquetaAtiva(productId, productName, qty, stockLabel) {
+  const payload = {
+    product_id: productId,
+    product_name: productName || "",
+    quantity_remaining: Number(qty || 0),
+    stock_label: stockLabel || "",
+    status: "ativa"
+  };
+
   try {
     await loadPendingLabels();
-    const existingActive = getActiveLabelRecord(productId);
-    const pending = getPendingLabelRecord(productId);
-    let res;
-    if (existingActive) {
-      res = await sb.from('pending_labels').update({
-        product_name: productName || "",
-        quantity_remaining: Number(qty || 0),
-        stock_label: stockLabel || "",
-        status: 'ativa'
-      }).eq('id', existingActive.id);
-    } else if (pending && Number(pending.quantity_remaining) === Number(qty || 0)) {
-      res = await sb.from('pending_labels').update({ status: 'ativa', stock_label: stockLabel || "" }).eq('id', pending.id);
-    } else {
-      res = await sb.from('pending_labels').insert({
-        product_id: productId,
-        product_name: productName || "",
-        quantity_remaining: Number(qty || 0),
-        status: 'ativa',
-        stock_label: stockLabel || ""
-      });
+
+    // 1) Primeiro tenta atualizar etiqueta existente pelo código da etiqueta
+    // Isso evita erro de insert quando já existe uma linha antiga para esse produto/código.
+    if (stockLabel) {
+      const updCode = await sb.from("pending_labels")
+        .update(payload)
+        .eq("stock_label", stockLabel);
+
+      if (updCode && !updCode.error) {
+        await loadPendingLabels();
+        renderFilaEtiquetas();
+        return true;
+      }
     }
-    if (res && res.error) {
-      console.error("Erro ao registrar etiqueta ativa:", res.error);
-      alert("Não foi possível registrar a etiqueta ativa. Verifique permissões da tabela pending_labels.");
+
+    // 2) Tenta atualizar etiqueta ativa existente do mesmo produto
+    const existingActive = getActiveLabelRecord(productId);
+    if (existingActive) {
+      const updActive = await sb.from("pending_labels")
+        .update(payload)
+        .eq("id", existingActive.id);
+
+      if (updActive && updActive.error) {
+        console.error("Erro ao atualizar etiqueta ativa:", updActive.error);
+        alert("Erro ao atualizar etiqueta ativa: " + (updActive.error.message || JSON.stringify(updActive.error)));
+        return false;
+      }
+
+      await loadPendingLabels();
+      renderFilaEtiquetas();
+      return true;
+    }
+
+    // 3) Se existir pendente do mesmo produto, transforma em ativa
+    const pending = getPendingLabelRecord(productId);
+    if (pending) {
+      const updPending = await sb.from("pending_labels")
+        .update(payload)
+        .eq("id", pending.id);
+
+      if (updPending && updPending.error) {
+        console.error("Erro ao atualizar etiqueta pendente:", updPending.error);
+        alert("Erro ao atualizar etiqueta pendente: " + (updPending.error.message || JSON.stringify(updPending.error)));
+        return false;
+      }
+
+      await loadPendingLabels();
+      renderFilaEtiquetas();
+      return true;
+    }
+
+    // 4) Só se não existir nada, insere uma nova etiqueta ativa
+    const ins = await sb.from("pending_labels").insert(payload);
+
+    if (ins && ins.error) {
+      console.error("Erro ao inserir etiqueta ativa:", ins.error);
+      alert("Erro real do Supabase: " + (ins.error.message || JSON.stringify(ins.error)));
       return false;
     }
+
     await loadPendingLabels();
     renderFilaEtiquetas();
     return true;
   } catch (e) {
-    console.error("Erro ao registrar etiqueta ativa:", e);
-    alert("Erro ao registrar etiqueta ativa.");
+    console.error("Erro geral ao registrar etiqueta ativa:", e);
+    alert("Erro geral ao registrar etiqueta ativa: " + (e?.message || e));
     return false;
   }
 }
@@ -1656,7 +1716,7 @@ async function login() {
 function logout() { db.sessionUser = null; localStorage.removeItem("inno_stock_online_session_user"); location.reload(); }
 function applyUserPermissions() {
   const u = currentUser();
-  if (byId("userChip")) byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
+  if (byId("userChip")) byId("userChip").textContent = roleLabel(u?.role) + " • " + (u?.name || u?.username || "Usuário");
   const admin = isAdmin ? isAdmin() : false;
   const setVisible = (id, visible) => {
     const el = byId(id); if (!el) return;
@@ -1742,9 +1802,9 @@ async function editarUsuario(i) {
   await sb.from('app_users').update({
     name: name ?? u.name,
     username: username ?? u.username,
-    role: (role === "admin" || role === "operador" || role === "conferente") ? role : u.role
+    role: (role === "admin" || role === "operador" || role === "conferente" || role === "sac") ? role : u.role
   }).eq('id', u.id);
-  await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador" || role === "conferente") ? role : u.role));
+  await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador" || role === "conferente" || role === "sac") ? role : u.role));
   await loadAll();
   render();
 }

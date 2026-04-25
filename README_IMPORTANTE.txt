@@ -131,3 +131,14 @@ Atualização:
 - admin pode escolher quais botões/funções cada usuário verá e usará
 - botão Permissões na lista de usuários
 - SQL atualizado com coluna app_users.permissions
+
+Correção:
+- etiqueta ativa agora tenta atualizar pelo stock_label antes de inserir nova linha
+- se o Supabase der erro, agora mostra a mensagem real do erro
+- SQL inclui permissões extras para pending_labels
+
+Atualização:
+- chip do usuário agora mostra Cargo • Nome
+- menu lateral agora rola independente da página principal
+- adicionado nível SAC
+- SAC recebe permissões padrão: Minha conta, Ver estoque e Histórico

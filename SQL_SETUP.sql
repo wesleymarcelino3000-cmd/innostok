@@ -137,3 +137,38 @@ grant all on table public.app_users to authenticated;
 grant usage, select, update on all sequences in schema public to anon;
 grant usage, select, update on all sequences in schema public to authenticated;
 notify pgrst, 'reload schema';
+
+
+-- CORREÇÃO EXTRA pending_labels
+alter table public.pending_labels disable row level security;
+
+drop policy if exists "Allow all pending_labels" on public.pending_labels;
+create policy "Allow all pending_labels"
+on public.pending_labels
+for all
+using (true)
+with check (true);
+
+grant usage on schema public to anon;
+grant usage on schema public to authenticated;
+grant usage on schema public to service_role;
+
+grant all on table public.pending_labels to anon;
+grant all on table public.pending_labels to authenticated;
+grant all on table public.pending_labels to service_role;
+
+grant usage, select, update on all sequences in schema public to anon;
+grant usage, select, update on all sequences in schema public to authenticated;
+grant usage, select, update on all sequences in schema public to service_role;
+
+notify pgrst, 'reload schema';
+
+
+-- NÍVEL SAC E PERMISSÕES PADRÃO
+alter table public.app_users add column if not exists permissions jsonb default '[]'::jsonb;
+
+update public.app_users
+set permissions = '["account","ver_estoque","historico"]'::jsonb
+where role = 'sac' and (permissions is null or permissions = '[]'::jsonb);
+
+notify pgrst, 'reload schema';
