@@ -212,15 +212,6 @@ th{background:#f8fafc}
 .perm-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-weight:700;color:#1f2937}
 .perm-item input{width:auto}
 @media(max-width:900px){.perm-grid{grid-template-columns:1fr}}
-
-.user-edit-anim{
-  animation:userEditSlideFade .32s ease;
-}
-@keyframes userEditSlideFade{
-  0%{opacity:0;transform:translateY(18px) scale(.98)}
-  100%{opacity:1;transform:translateY(0) scale(1)}
-}
-
 </style>
 </head>
 <body>
@@ -1804,9 +1795,9 @@ async function criarUsuario() {
 async function editarUsuario(i) {
   if (!isAdmin()) return alert("Somente admin pode editar usuários.");
   const u = db.users[i];
-  const name = "";
-  const username = "";
-  const role = "":", u.role);
+  const name = prompt("Editar nome:", u.name);
+  const username = prompt("Editar usuário:", u.username);
+  const role = prompt("Editar nível (admin, conferente ou operador):", u.role);
   if (name === null && username === null && role === null) return;
   await sb.from('app_users').update({
     name: name ?? u.name,
@@ -1835,7 +1826,7 @@ function renderUsuarios() {
       <td>${u.name || ""}</td>
       <td>${u.username || ""}</td>
       <td>${u.role || ""}</td>
-      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
+      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="secondary-action" onclick="abrirModalPermissoes(${i})">Permissões</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
     </tr>
   `).join("");
 }
@@ -2439,7 +2430,7 @@ function renderEstoqueCompleto() {
 function verificarSenhaAdminAtual() {
   const u = currentUser();
   if (!u) return false;
-  const senha = "";
+  const senha = prompt("Digite sua senha para confirmar:");
   if (senha === null) return false;
   return senha === u.password;
 }
@@ -2938,44 +2929,5 @@ function gerarEtiquetaManual() {
 
 function imprimirEtiqueta() {
   window.print();
-}
-</script>
-
-<script>
-async function salvarEdicaoUsuario(i){
-  const u = db.users[i];
-  if(!u) return;
-
-  const name = byId("editNome").value.trim();
-  const username = byId("editUser").value.trim();
-  const role = byId("editRole").value;
-  const permissions = [...document.querySelectorAll("#editUserPermissoesInline input[type='checkbox']:checked")]
-    .map(el => el.value);
-
-  if(!name || !username){
-    alert("Informe nome e usuário.");
-    return;
-  }
-
-  const res = await sb.from("app_users").update({
-    name, username, role, permissions
-  }).eq("id", u.id);
-
-  if(res && res.error){
-    console.error("Erro ao salvar usuário:", res.error);
-    alert("Erro ao salvar usuário. Rode o SQL_SETUP.sql atualizado.");
-    return;
-  }
-
-  await registrarHistorico('editar_usuario', 'usuarios', username, 0, 'Perfil: ' + role + ' | Permissões: ' + permissions.join(', '));
-
-  await loadAll();
-  render();
-  applyUserPermissions();
-
-  const box = byId("editUserInline");
-  if(box) box.remove();
-
-  alert("Usuário atualizado com sucesso.");
 }
 </script>
