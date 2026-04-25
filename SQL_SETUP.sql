@@ -172,3 +172,11 @@ set permissions = '["account","ver_estoque","historico"]'::jsonb
 where role = 'sac' and (permissions is null or permissions = '[]'::jsonb);
 
 notify pgrst, 'reload schema';
+
+
+-- GARANTIR PERMISSÕES INLINE DE USUÁRIO
+alter table public.app_users add column if not exists permissions jsonb default '[]'::jsonb;
+alter table public.app_users disable row level security;
+grant all on table public.app_users to anon;
+grant all on table public.app_users to authenticated;
+notify pgrst, 'reload schema';

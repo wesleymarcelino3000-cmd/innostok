@@ -142,3 +142,8 @@ Atualização:
 - menu lateral agora rola independente da página principal
 - adicionado nível SAC
 - SAC recebe permissões padrão: Minha conta, Ver estoque e Histórico
+
+Atualização:
+- edição de permissões agora fica dentro do quadro Editar usuário
+- removido uso de popup para permissões
+- ao salvar usuário, salva nome, usuário, perfil e permissões no mesmo lugar

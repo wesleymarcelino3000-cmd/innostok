@@ -1826,7 +1826,7 @@ function renderUsuarios() {
       <td>${u.name || ""}</td>
       <td>${u.username || ""}</td>
       <td>${u.role || ""}</td>
-      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="secondary-action" onclick="abrirModalPermissoes(${i})">Permissões</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
+      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
     </tr>
   `).join("");
 }
@@ -2929,5 +2929,44 @@ function gerarEtiquetaManual() {
 
 function imprimirEtiqueta() {
   window.print();
+}
+</script>
+
+<script>
+async function salvarEdicaoUsuario(i){
+  const u = db.users[i];
+  if(!u) return;
+
+  const name = byId("editNome").value.trim();
+  const username = byId("editUser").value.trim();
+  const role = byId("editRole").value;
+  const permissions = [...document.querySelectorAll("#editUserPermissoesInline input[type='checkbox']:checked")]
+    .map(el => el.value);
+
+  if(!name || !username){
+    alert("Informe nome e usuário.");
+    return;
+  }
+
+  const res = await sb.from("app_users").update({
+    name, username, role, permissions
+  }).eq("id", u.id);
+
+  if(res && res.error){
+    console.error("Erro ao salvar usuário:", res.error);
+    alert("Erro ao salvar usuário. Rode o SQL_SETUP.sql atualizado.");
+    return;
+  }
+
+  await registrarHistorico('editar_usuario', 'usuarios', username, 0, 'Perfil: ' + role + ' | Permissões: ' + permissions.join(', '));
+
+  await loadAll();
+  render();
+  applyUserPermissions();
+
+  const box = byId("editUserInline");
+  if(box) box.remove();
+
+  alert("Usuário atualizado com sucesso.");
 }
 </script>
