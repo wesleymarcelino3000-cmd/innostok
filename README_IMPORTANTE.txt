@@ -125,3 +125,9 @@ Correção:
 
 Correção:
 - removida a linha Quantidade documentada da etiqueta
+
+Atualização:
+- permissões por usuário e por função
+- admin pode escolher quais botões/funções cada usuário verá e usará
+- botão Permissões na lista de usuários
+- SQL atualizado com coluna app_users.permissions

@@ -205,6 +205,13 @@ th{background:#f8fafc}
   .low-stock-actions button{width:100%}
 }
 
+
+.perm-box{margin-top:14px;padding:14px;border-radius:16px;background:rgba(255,255,255,.55);border:1px solid #dbeafe}
+.perm-title{font-weight:800;margin-bottom:10px;color:#0f172a}
+.perm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.perm-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-weight:700;color:#1f2937}
+.perm-item input{width:auto}
+@media(max-width:900px){.perm-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -282,8 +289,12 @@ th{background:#f8fafc}
             <div><label>Senha</label><input class="app-input" id="uSenha"></div>
           </div>
           <div class="form-row" style="margin-top:12px">
-            <div><label>Nível</label><select id="uRole" class="app-input"><option value="operador">Operador</option><option value="conferente">Conferente</option><option value="admin">Admin</option></select></div>
+            <div><label>Nível</label><select id="uRole" class="app-input" onchange="atualizarPermissoesCadastroPorRole()"><option value="operador">Operador</option><option value="conferente">Conferente</option><option value="admin">Admin</option></select></div>
             <div></div>
+          </div>
+          <div class="perm-box">
+            <div class="perm-title">Permissões do usuário</div>
+            <div id="uPermissoes" class="perm-grid"></div>
           </div>
           <button class="action" style="margin-top:12px" onclick="criarUsuario()">Cadastrar usuário</button>
           <div class="wrap" style="margin-top:16px">
@@ -636,6 +647,23 @@ th{background:#f8fafc}
   </div>
 </div>
 
+
+<div id="permModalOverlay" class="edit-modal-overlay">
+  <div class="edit-modal">
+    <div class="edit-modal-top">
+      <h3>Permissões do usuário</h3>
+      <div class="sub">Escolha quais funções este usuário poderá visualizar e usar</div>
+    </div>
+    <div class="edit-modal-body">
+      <div class="edit-highlight">Usuário: <span id="permUsuarioAtual">-</span></div>
+      <div id="editPermissoes" class="perm-grid"></div>
+      <div class="edit-actions">
+        <button class="edit-cancel" onclick="fecharModalPermissoes()">Cancelar</button>
+        <button class="edit-save" onclick="salvarPermissoesUsuario()">Salvar permissões</button>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 const sb = window.supabase.createClient("https://skjvvuaxhetixbugowfj.supabase.co", "sb_publishable_SVu7YkkugrY2IDSxzS8Zqg_C3MxxAYq");
 let db = { users: [], products: [], movements: [], filteredMovements: [], pendingLabels: [], productDocs: [], lastInternalCode: 0, sessionUser: null };
@@ -747,6 +775,108 @@ function currentUser() { return db.users.find(u => u.username === db.sessionUser
 function isAdmin() { const u = currentUser(); return !!u && u.role === "admin"; }
 function isConferente() { const u = currentUser(); return !!u && u.role === "conferente"; }
 function isOperador() { const u = currentUser(); return !!u && u.role === "operador"; }
+
+let usuarioPermissaoEditIndex = null;
+const PERMISSOES_SISTEMA = [
+  { key: "account", label: "Minha conta" },
+  { key: "users", label: "Usuários" },
+  { key: "novo_produto", label: "Novo produto" },
+  { key: "entrada_estoque", label: "Entrada em produto" },
+  { key: "baixa_manual", label: "Baixa manual" },
+  { key: "ver_estoque", label: "Ver estoque" },
+  { key: "documentar", label: "Documentar" },
+  { key: "exportar_excel", label: "Exportar Excel" },
+  { key: "historico", label: "Histórico" },
+  { key: "graficos", label: "Gráficos" },
+  { key: "etiquetas", label: "Etiquetas de estoque" },
+  { key: "fila_etiquetas", label: "Fila de etiquetas" },
+  { key: "scanner", label: "Scanner no celular" }
+];
+const PERMISSOES_PADRAO = {
+  admin: PERMISSOES_SISTEMA.map(p => p.key),
+  conferente: ["account","novo_produto","entrada_estoque","baixa_manual","ver_estoque","documentar","exportar_excel","etiquetas","fila_etiquetas","scanner"],
+  operador: ["account","ver_estoque"]
+};
+function normalizarPermissoesUser(u) {
+  if (!u) return [];
+  if (u.role === "admin") return PERMISSOES_PADRAO.admin;
+  let p = u.permissions;
+  try { if (typeof p === "string" && p.trim()) p = JSON.parse(p); } catch(e) { p = null; }
+  if (Array.isArray(p)) return p;
+  return PERMISSOES_PADRAO[u.role] || PERMISSOES_PADRAO.operador;
+}
+function temPermissao(chave) {
+  const u = currentUser();
+  if (!u) return false;
+  if (u.role === "admin") return true;
+  return normalizarPermissoesUser(u).includes(chave);
+}
+function bloquearSemPermissao(chave, msg) {
+  if (temPermissao(chave)) return false;
+  alert(msg || "Você não tem permissão para acessar esta função.");
+  return true;
+}
+function renderPermissoesCheckbox(containerId, selecionadas) {
+  const el = byId(containerId);
+  if (!el) return;
+  const vals = Array.isArray(selecionadas) ? selecionadas : [];
+  el.innerHTML = PERMISSOES_SISTEMA.map(p => `
+    <label class="perm-item">
+      <input type="checkbox" value="${p.key}" ${vals.includes(p.key) ? "checked" : ""}>
+      <span>${p.label}</span>
+    </label>
+  `).join("");
+}
+function coletarPermissoesCheckbox(containerId) {
+  const el = byId(containerId);
+  if (!el) return [];
+  return [...el.querySelectorAll("input[type='checkbox']:checked")].map(i => i.value);
+}
+function permissoesPadraoRole(role) { return [...(PERMISSOES_PADRAO[role] || PERMISSOES_PADRAO.operador)]; }
+function atualizarPermissoesCadastroPorRole() {
+  const role = byId("uRole")?.value || "operador";
+  renderPermissoesCheckbox("uPermissoes", permissoesPadraoRole(role));
+}
+function abrirModalPermissoes(i) {
+  if (!isAdmin()) return alert("Somente admin pode editar permissões.");
+  const u = db.users[i]; if (!u) return;
+  usuarioPermissaoEditIndex = i;
+  byId("permUsuarioAtual").textContent = (u.name || "") + " • " + (u.username || "");
+  renderPermissoesCheckbox("editPermissoes", normalizarPermissoesUser(u));
+  byId("permModalOverlay")?.classList.add("show");
+}
+function fecharModalPermissoes() {
+  usuarioPermissaoEditIndex = null;
+  byId("permModalOverlay")?.classList.remove("show");
+}
+async function salvarPermissoesUsuario() {
+  if (!isAdmin()) return alert("Somente admin pode salvar permissões.");
+  if (usuarioPermissaoEditIndex === null || usuarioPermissaoEditIndex < 0) return;
+  const u = db.users[usuarioPermissaoEditIndex]; if (!u) return;
+  const permissions = coletarPermissoesCheckbox("editPermissoes");
+  const res = await sb.from('app_users').update({ permissions }).eq('id', u.id);
+  if (res && res.error) {
+    console.error("Erro ao salvar permissões:", res.error);
+    alert("Não foi possível salvar permissões. Rode o SQL_SETUP.sql atualizado.");
+    return;
+  }
+  await registrarHistorico('editar_permissoes', 'usuarios', u.username, 0, 'Permissões: ' + permissions.join(', '));
+  fecharModalPermissoes();
+  await loadAll();
+  render();
+  applyUserPermissions();
+  alert("Permissões salvas com sucesso.");
+}
+function permissaoDaSecao(id) {
+  const mapa = {
+    account:"account", users:"users", produto:"novo_produto", entradaEstoque:"entrada_estoque",
+    manual:"baixa_manual", estoqueView:"ver_estoque", documentarView:"documentar",
+    historicoView:"historico", produtoHistoricoView:"historico", graficosView:"graficos",
+    etiquetas:"etiquetas", filaEtiquetas:"fila_etiquetas", scannerMobile:"scanner"
+  };
+  return mapa[id] || "";
+}
+
 function setMenuVisibility(id, show) { const el = byId(id); if (el) el.classList.toggle("hidden", !show); }
 function nextInternalCode() { db.lastInternalCode += 1; return "INT-" + String(db.lastInternalCode).padStart(6, "0"); }
 function createStockLabelCode(p) { return "ESTOQUE-" + p.internal_code; }
@@ -807,6 +937,8 @@ function hideAllSections() {
   });
 }
 function showSection(id) {
+  const permissao = permissaoDaSecao(id);
+  if (permissao && bloquearSemPermissao(permissao)) return;
   if (id === "produto") {
     try { preencherCategoriasNovoProduto(); } catch(e) {}
     setTimeout(() => {
@@ -916,6 +1048,7 @@ function dadosDocumentacaoEtiqueta(productId) {
 }
 
 async function salvarDocumentacaoProduto() {
+  if (bloquearSemPermissao('documentar')) return;
   if (!(isAdmin() || isConferente())) return alert("Somente admin ou conferente pode documentar produto.");
 
   const productId = byId("docProduto")?.value || "";
@@ -1335,6 +1468,7 @@ function abrirJanelaImpressaoEtiquetas(htmlEtiquetas) {
 }
 
 async function imprimirEtiquetaPendente(i) {
+  if (bloquearSemPermissao('fila_etiquetas')) return;
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
   const pendentes = (db.pendingLabels || []).filter(x => x.status === "pendente");
   const item = pendentes[i];
@@ -1348,6 +1482,7 @@ async function imprimirEtiquetaPendente(i) {
 }
 
 async function imprimirFilaEtiquetas() {
+  if (bloquearSemPermissao('fila_etiquetas')) return;
   if (isOperador()) return alert("Operador não pode usar a fila de etiquetas.");
   const items = (db.pendingLabels || []).filter(x => x.status === 'pendente');
   if (!items.length) {
@@ -1522,89 +1657,40 @@ function logout() { db.sessionUser = null; localStorage.removeItem("inno_stock_o
 function applyUserPermissions() {
   const u = currentUser();
   if (byId("userChip")) byId("userChip").textContent = (u?.name || "Usuário") + " • " + (u?.username || "");
-
   const admin = isAdmin ? isAdmin() : false;
-  const operador = isOperador ? isOperador() : false;
-  const conferente = isConferente ? isConferente() : false;
-
   const setVisible = (id, visible) => {
-    const el = byId(id);
-    if (!el) return;
+    const el = byId(id); if (!el) return;
     el.style.display = visible ? "block" : "none";
-    if (visible) el.classList.remove("hidden");
-    else el.classList.add("hidden");
+    if (visible) el.classList.remove("hidden"); else el.classList.add("hidden");
   };
-
   const usersBlocked = byId("usersBlocked");
   const usersAdminArea = byId("usersAdminArea");
   const accountBlocked = byId("accountBlocked");
   const accountAdminArea = byId("accountAdminArea");
-
   if (accountBlocked) accountBlocked.style.display = admin ? "none" : "block";
   if (accountAdminArea) accountAdminArea.style.display = admin ? "block" : "none";
   if (usersBlocked) usersBlocked.style.display = admin ? "none" : "block";
   if (usersAdminArea) usersAdminArea.style.display = admin ? "block" : "none";
-
-  if (admin) {
-    setVisible("btnUsuarios", true);
-    setVisible("btnVerEstoque", true);
-    setVisible("btnNovoProduto", true);
-    setVisible("btnEntradaEstoque", true);
-    setVisible("btnBaixaManual", true);
-    setVisible("btnExportarExcel", true);
-    setVisible("btnDocumentar", true);
-    setVisible("btnEtiquetas", true);
-    setVisible("btnFilaEtiquetas", true);
-    setVisible("btnScanner", true);
-    setVisible("historyBtn", true);
-    setVisible("btnGraficos", true);
-  } else if (conferente) {
-    setVisible("btnUsuarios", false);
-    setVisible("btnVerEstoque", true);
-    setVisible("btnNovoProduto", true);
-    setVisible("btnEntradaEstoque", true);
-    setVisible("btnBaixaManual", true);
-    setVisible("btnExportarExcel", true);
-    setVisible("btnDocumentar", true);
-    setVisible("btnEtiquetas", true);
-    setVisible("btnFilaEtiquetas", true);
-    setVisible("btnScanner", true);
-    setVisible("historyBtn", false);
-    setVisible("btnGraficos", false);
-  } else if (operador) {
-    setVisible("btnUsuarios", false);
-    setVisible("btnVerEstoque", true);
-    setVisible("btnNovoProduto", false);
-    setVisible("btnEntradaEstoque", false);
-    setVisible("btnBaixaManual", false);
-    setVisible("btnExportarExcel", false);
-    setVisible("btnDocumentar", false);
-    setVisible("btnEtiquetas", false);
-    setVisible("btnFilaEtiquetas", false);
-    setVisible("btnScanner", false);
-    setVisible("historyBtn", false);
-    setVisible("btnGraficos", false);
-    setVisible("btnGraficos", false);
-  } else {
-    setVisible("btnUsuarios", false);
-    setVisible("btnVerEstoque", true);
-    setVisible("btnNovoProduto", false);
-    setVisible("btnEntradaEstoque", false);
-    setVisible("btnBaixaManual", false);
-    setVisible("btnExportarExcel", false);
-    setVisible("btnDocumentar", false);
-    setVisible("btnEtiquetas", false);
-    setVisible("btnFilaEtiquetas", false);
-    setVisible("btnScanner", false);
-    setVisible("historyBtn", false);
-    setVisible("btnGraficos", false);
-    setVisible("btnGraficos", false);
-  }
-
+  setVisible("historyBtn", temPermissao("historico"));
+  setVisible("btnGraficos", temPermissao("graficos"));
+  setVisible("btnVerEstoque", temPermissao("ver_estoque"));
+  setVisible("btnExportarExcel", temPermissao("exportar_excel"));
+  setVisible("btnScanner", temPermissao("scanner"));
+  setVisible("btnDocumentar", temPermissao("documentar"));
+  document.querySelectorAll(".sidebar button").forEach(btn => {
+    const on = btn.getAttribute("onclick") || "";
+    if (on.includes("showSection('account')")) btn.style.display = temPermissao("account") ? "block" : "none";
+    if (on.includes("showSection('users')")) btn.style.display = temPermissao("users") ? "block" : "none";
+    if (on.includes("showSection('produto')")) btn.style.display = temPermissao("novo_produto") ? "block" : "none";
+    if (on.includes("showSection('manual')")) btn.style.display = temPermissao("baixa_manual") ? "block" : "none";
+    if (on.includes("showSection('etiquetas')")) btn.style.display = temPermissao("etiquetas") ? "block" : "none";
+    if (on.includes("showSection('filaEtiquetas')")) btn.style.display = temPermissao("fila_etiquetas") ? "block" : "none";
+  });
   if (admin && u) {
     if (byId("accNome")) byId("accNome").value = u.name || "";
     if (byId("accUser")) byId("accUser").value = u.username || "";
   }
+  try { atualizarPermissoesCadastroPorRole(); } catch(e) {}
 }
 async function salvarConta() {
   if (!isAdmin()) return alert("Somente o admin pode alterar usuário e senha.");
@@ -1625,6 +1711,7 @@ async function salvarConta() {
   alert("Conta salva");
 }
 async function criarUsuario() {
+  if (bloquearSemPermissao('users')) return;
   if (db.users.length >= 20) {
     alert("Limite máximo de 20 usuários atingido.");
     return;
@@ -1634,8 +1721,9 @@ async function criarUsuario() {
   const username = byId("uUsuario").value.trim();
   const password = byId("uSenha").value.trim();
   const role = byId("uRole").value || "operador";
+  const permissions = coletarPermissoesCheckbox('uPermissoes');
   if (!name || !username || !password) return;
-  await sb.from('app_users').insert({ name, username, password, role });
+  await sb.from('app_users').insert({ name, username, password, role, permissions });
   await registrarHistorico('criar_usuario', 'usuarios', username, 0, 'Nível: ' + role);
   byId("uNome").value = "";
   byId("uUsuario").value = "";
@@ -1678,11 +1766,12 @@ function renderUsuarios() {
       <td>${u.name || ""}</td>
       <td>${u.username || ""}</td>
       <td>${u.role || ""}</td>
-      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
+      <td>${admin ? `<button class="secondary-action" onclick="editarUsuario(${i})">Editar</button> <button class="secondary-action" onclick="abrirModalPermissoes(${i})">Permissões</button> <button class="danger" onclick="removerUsuario(${i})">Excluir</button>` : ""}</td>
     </tr>
   `).join("");
 }
 async function add() {
+  if (bloquearSemPermissao('novo_produto')) return;
   if (isOperador()) return alert("Operador não pode adicionar novo produto.");
   const item = {
     name: byId("nome").value.trim(),
@@ -1711,6 +1800,7 @@ function preencherSelectEntradaProduto() {
 }
 
 async function darEntradaProduto() {
+  if (bloquearSemPermissao('entrada_estoque')) return;
   if (isOperador()) return alert("Operador não pode dar entrada em produto.");
   const idx = byId("entradaProduto") ? byId("entradaProduto").value : "";
   const qtd = Number(byId("entradaQtd") ? byId("entradaQtd").value : 0);
@@ -1748,6 +1838,7 @@ function preencherSelectProduto() {
   sel.innerHTML = '<option value="">Selecione</option>' + options;
 }
 async function registrarManual() {
+  if (bloquearSemPermissao('baixa_manual')) return;
   if (isOperador()) return alert("Operador não pode usar baixa manual.");
   const idx = byId("manualProduto").value;
   const tipo = byId("manualTipo").value;
@@ -1790,6 +1881,7 @@ function renderEtiquetas() {
   tbody.innerHTML = rows || `<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>`;
 }
 async function gerarEtiqueta(i) {
+  if (bloquearSemPermissao('etiquetas')) return;
   try {
     const p = db.products[i];
     if (!p) return;
@@ -1957,6 +2049,7 @@ function usarCodigoManual() {
   processCode(code);
 }
 async function iniciarScanner() {
+  if (bloquearSemPermissao('scanner')) return;
   if (isOperador()) return alert("Operador não pode usar o scanner no celular.");
   const help = byId("cameraHelp");
   if (help) {
@@ -2024,6 +2117,7 @@ function showBigOk(msg) {
   setTimeout(() => el.classList.remove("show"), 1800);
 }
 async function darBaixaScanner() {
+  if (bloquearSemPermissao('scanner')) return;
   if (ultimoProdutoIndex < 0) return alert("Nenhum produto reconhecido.");
   const qtd = Number(byId("scannerQty").value || 0);
   if (qtd <= 0) return alert("Informe uma quantidade válida.");
@@ -2093,6 +2187,7 @@ function render() {
 }
 
 async function exportarPlanilha() {
+  if (bloquearSemPermissao('exportar_excel')) return;
   if (isOperador()) return alert("Operador não pode exportar Excel.");
   if (!db.products || !db.products.length) {
     alert("Não há produtos para exportar.");

@@ -114,3 +114,26 @@ grant all on public.product_docs to service_role;
 grant all on public.pending_labels to service_role;
 
 notify pgrst, 'reload schema';
+
+
+-- PERMISSÕES POR USUÁRIO
+alter table public.app_users add column if not exists permissions jsonb default '[]'::jsonb;
+
+update public.app_users
+set permissions = '["account","users","novo_produto","entrada_estoque","baixa_manual","ver_estoque","documentar","exportar_excel","historico","graficos","etiquetas","fila_etiquetas","scanner"]'::jsonb
+where role = 'admin' and (permissions is null or permissions = '[]'::jsonb);
+
+update public.app_users
+set permissions = '["account","novo_produto","entrada_estoque","baixa_manual","ver_estoque","documentar","exportar_excel","etiquetas","fila_etiquetas","scanner"]'::jsonb
+where role = 'conferente' and (permissions is null or permissions = '[]'::jsonb);
+
+update public.app_users
+set permissions = '["account","ver_estoque"]'::jsonb
+where role = 'operador' and (permissions is null or permissions = '[]'::jsonb);
+
+alter table public.app_users disable row level security;
+grant all on table public.app_users to anon;
+grant all on table public.app_users to authenticated;
+grant usage, select, update on all sequences in schema public to anon;
+grant usage, select, update on all sequences in schema public to authenticated;
+notify pgrst, 'reload schema';
