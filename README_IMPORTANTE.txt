@@ -142,3 +142,8 @@ Atualização:
 - menu lateral agora rola independente da página principal
 - adicionado nível SAC
 - SAC recebe permissões padrão: Minha conta, Ver estoque e Histórico
+
+Correção:
+- edição de usuário agora abre em quadro inline, sem popup
+- nível SAC adicionado no editar usuário
+- animação suave ao abrir edição

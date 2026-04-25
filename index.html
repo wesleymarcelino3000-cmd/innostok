@@ -212,6 +212,20 @@ th{background:#f8fafc}
 .perm-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-weight:700;color:#1f2937}
 .perm-item input{width:auto}
 @media(max-width:900px){.perm-grid{grid-template-columns:1fr}}
+
+.user-edit-anim{animation:userEditSlideFade .32s ease}
+@keyframes userEditSlideFade{
+  0%{opacity:0;transform:translateY(18px) scale(.98)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+.user-edit-box{
+  margin-top:18px;
+  padding:18px;
+  border-radius:18px;
+  background:rgba(255,255,255,.78);
+  border:1px solid rgba(219,234,254,.9);
+  box-shadow:0 8px 22px rgba(0,0,0,.05);
+}
 </style>
 </head>
 <body>
@@ -1792,22 +1806,109 @@ async function criarUsuario() {
   await loadAll();
   render();
 }
-async function editarUsuario(i) {
+function editarUsuario(i) {
   if (!isAdmin()) return alert("Somente admin pode editar usuários.");
+
   const u = db.users[i];
-  const name = prompt("Editar nome:", u.name);
-  const username = prompt("Editar usuário:", u.username);
-  const role = prompt("Editar nível (admin, conferente ou operador):", u.role);
-  if (name === null && username === null && role === null) return;
-  await sb.from('app_users').update({
-    name: name ?? u.name,
-    username: username ?? u.username,
-    role: (role === "admin" || role === "operador" || role === "conferente" || role === "sac") ? role : u.role
-  }).eq('id', u.id);
-  await registrarHistorico('editar_usuario', 'usuarios', username ?? u.username, 0, 'Nível: ' + ((role === "admin" || role === "operador" || role === "conferente" || role === "sac") ? role : u.role));
+  if (!u) return;
+
+  showSection("users");
+
+  let container = byId("editUserInline");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "editUserInline";
+    container.className = "user-edit-box user-edit-anim";
+    byId("usersAdminArea").appendChild(container);
+  }
+
+  container.classList.remove("user-edit-anim");
+  void container.offsetWidth;
+  container.classList.add("user-edit-anim");
+
+  container.innerHTML = `
+    <h3>Editar usuário</h3>
+
+    <div class="form-row">
+      <div>
+        <label>Nome</label>
+        <input class="app-input" id="editUserNome" value="${u.name || ""}">
+      </div>
+      <div>
+        <label>Usuário</label>
+        <input class="app-input" id="editUserUsuario" value="${u.username || ""}">
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top:12px">
+      <div>
+        <label>Nível</label>
+        <select class="app-input" id="editUserRole">
+          <option value="operador" ${u.role === "operador" ? "selected" : ""}>Operador</option>
+          <option value="conferente" ${u.role === "conferente" ? "selected" : ""}>Conferente</option>
+          <option value="sac" ${u.role === "sac" ? "selected" : ""}>SAC</option>
+          <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="action" onclick="salvarEdicaoUsuarioInline(${i})">Salvar alterações</button>
+      <button class="secondary-action" onclick="fecharEdicaoUsuarioInline()">Cancelar</button>
+    </div>
+  `;
+
+  setTimeout(() => {
+    try { container.scrollIntoView({ behavior: "smooth", block: "start" }); } catch(e) {}
+  }, 80);
+}
+
+function fecharEdicaoUsuarioInline() {
+  const box = byId("editUserInline");
+  if (box) box.remove();
+}
+
+async function salvarEdicaoUsuarioInline(i) {
+  if (!isAdmin()) return alert("Somente admin pode salvar usuários.");
+
+  const u = db.users[i];
+  if (!u) return;
+
+  const name = byId("editUserNome")?.value.trim() || "";
+  const username = byId("editUserUsuario")?.value.trim() || "";
+  const role = byId("editUserRole")?.value || "operador";
+
+  if (!name || !username) {
+    alert("Informe nome e usuário.");
+    return;
+  }
+
+  const payload = { name, username, role };
+
+  // se o sistema tiver permissões por usuário, define padrão quando trocar o nível
+  if (typeof permissoesPadraoRole === "function") {
+    payload.permissions = permissoesPadraoRole(role);
+  }
+
+  const res = await sb.from("app_users").update(payload).eq("id", u.id);
+
+  if (res && res.error) {
+    console.error("Erro ao salvar usuário:", res.error);
+    alert("Não foi possível salvar o usuário.");
+    return;
+  }
+
+  await registrarHistorico("editar_usuario", "usuarios", username, 0, "Nível: " + role);
+
   await loadAll();
   render();
+  applyUserPermissions();
+  fecharEdicaoUsuarioInline();
+
+  alert("Usuário atualizado com sucesso.");
 }
+
 async function removerUsuario(i) {
   if (!isAdmin()) return;
   const u = db.users[i];

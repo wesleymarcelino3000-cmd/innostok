@@ -172,3 +172,13 @@ set permissions = '["account","ver_estoque","historico"]'::jsonb
 where role = 'sac' and (permissions is null or permissions = '[]'::jsonb);
 
 notify pgrst, 'reload schema';
+
+
+-- GARANTIA DO NÍVEL SAC
+alter table public.app_users add column if not exists permissions jsonb default '[]'::jsonb;
+
+update public.app_users
+set permissions = '["account","ver_estoque","historico"]'::jsonb
+where role = 'sac' and (permissions is null or permissions = '[]'::jsonb);
+
+notify pgrst, 'reload schema';
