@@ -212,6 +212,15 @@ th{background:#f8fafc}
 .perm-item{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:10px;font-weight:700;color:#1f2937}
 .perm-item input{width:auto}
 @media(max-width:900px){.perm-grid{grid-template-columns:1fr}}
+
+.user-edit-anim{
+  animation:userEditSlideFade .32s ease;
+}
+@keyframes userEditSlideFade{
+  0%{opacity:0;transform:translateY(18px) scale(.98)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+
 </style>
 </head>
 <body>
@@ -1795,9 +1804,9 @@ async function criarUsuario() {
 async function editarUsuario(i) {
   if (!isAdmin()) return alert("Somente admin pode editar usuários.");
   const u = db.users[i];
-  const name = prompt("Editar nome:", u.name);
-  const username = prompt("Editar usuário:", u.username);
-  const role = prompt("Editar nível (admin, conferente ou operador):", u.role);
+  const name = "";
+  const username = "";
+  const role = "":", u.role);
   if (name === null && username === null && role === null) return;
   await sb.from('app_users').update({
     name: name ?? u.name,
@@ -2430,7 +2439,7 @@ function renderEstoqueCompleto() {
 function verificarSenhaAdminAtual() {
   const u = currentUser();
   if (!u) return false;
-  const senha = prompt("Digite sua senha para confirmar:");
+  const senha = "";
   if (senha === null) return false;
   return senha === u.password;
 }

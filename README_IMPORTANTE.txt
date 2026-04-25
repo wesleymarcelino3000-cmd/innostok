@@ -147,3 +147,6 @@ Atualização:
 - edição de permissões agora fica dentro do quadro Editar usuário
 - removido uso de popup para permissões
 - ao salvar usuário, salva nome, usuário, perfil e permissões no mesmo lugar
+
+Atualização:
+- animação suave ao abrir/alternar edição de usuário
