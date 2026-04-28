@@ -226,6 +226,75 @@ th{background:#f8fafc}
   border:1px solid rgba(219,234,254,.9);
   box-shadow:0 8px 22px rgba(0,0,0,.05);
 }
+
+/* Animações premium nos botões */
+button,
+.login-btn,
+.action,
+.secondary-action,
+.warn-action,
+.success-action,
+.danger{
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, opacity .16s ease;
+  will-change: transform;
+}
+
+button:hover,
+.login-btn:hover,
+.action:hover,
+.secondary-action:hover,
+.warn-action:hover,
+.success-action:hover,
+.danger:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(0,0,0,.16);
+  filter: brightness(1.03);
+}
+
+button:active,
+.login-btn:active,
+.action:active,
+.secondary-action:active,
+.warn-action:active,
+.success-action:active,
+.danger:active{
+  transform: scale(.96);
+  box-shadow: 0 4px 10px rgba(0,0,0,.18);
+}
+
+.sidebar button{
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar button::after{
+  content:"";
+  position:absolute;
+  top:50%;
+  left:50%;
+  width:0;
+  height:0;
+  background:rgba(37,99,235,.18);
+  border-radius:999px;
+  transform:translate(-50%,-50%);
+  transition:width .35s ease,height .35s ease;
+}
+
+.sidebar button:active::after{
+  width:260px;
+  height:260px;
+}
+
+.btn-click-pulse{
+  animation:btnPulseClick .28s ease;
+}
+
+@keyframes btnPulseClick{
+  0%{transform:scale(1)}
+  45%{transform:scale(.94)}
+  100%{transform:scale(1)}
+}
+
 </style>
 </head>
 <body>

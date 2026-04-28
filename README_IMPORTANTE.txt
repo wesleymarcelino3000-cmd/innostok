@@ -147,3 +147,9 @@ Correção:
 - edição de usuário agora abre em quadro inline, sem popup
 - nível SAC adicionado no editar usuário
 - animação suave ao abrir edição
+
+Atualização:
+- animações suaves ao clicar nos botões
+- efeito hover premium
+- efeito pulse no clique
+- ripple suave nos botões do menu lateral
