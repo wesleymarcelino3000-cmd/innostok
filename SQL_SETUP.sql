@@ -182,3 +182,17 @@ set permissions = '["account","ver_estoque","historico"]'::jsonb
 where role = 'sac' and (permissions is null or permissions = '[]'::jsonb);
 
 notify pgrst, 'reload schema';
+
+
+-- NÍVEIS B2B E RH
+alter table public.app_users add column if not exists permissions jsonb default '[]'::jsonb;
+
+update public.app_users
+set permissions = '["account","ver_estoque","exportar_excel"]'::jsonb
+where role = 'b2b' and (permissions is null or permissions = '[]'::jsonb);
+
+update public.app_users
+set permissions = '["account","users","historico"]'::jsonb
+where role = 'rh' and (permissions is null or permissions = '[]'::jsonb);
+
+notify pgrst, 'reload schema';

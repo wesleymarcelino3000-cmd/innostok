@@ -372,7 +372,7 @@ button:active,
             <div><label>Senha</label><input class="app-input" id="uSenha"></div>
           </div>
           <div class="form-row" style="margin-top:12px">
-            <div><label>Nível</label><select id="uRole" class="app-input" onchange="atualizarPermissoesCadastroPorRole()"><option value="operador">Operador</option><option value="conferente">Conferente</option><option value="sac">SAC</option><option value="admin">Admin</option></select></div>
+            <div><label>Nível</label><select id="uRole" class="app-input" onchange="atualizarPermissoesCadastroPorRole()"><option value="operador">Operador</option><option value="conferente">Conferente</option><option value="sac">SAC</option><option value="b2b">B2B</option><option value="rh">RH</option><option value="admin">Admin</option></select></div>
             <div></div>
           </div>
           <div class="perm-box">
@@ -863,7 +863,9 @@ function roleLabel(role) {
     admin: "Admin",
     conferente: "Conferente",
     operador: "Operador",
-    sac: "SAC"
+    sac: "SAC",
+    b2b: "B2B",
+    rh: "RH"
   };
   return mapa[role] || "Usuário";
 }
@@ -890,6 +892,8 @@ const PERMISSOES_PADRAO = {
   admin: PERMISSOES_SISTEMA.map(p => p.key),
   conferente: ["account","novo_produto","entrada_estoque","baixa_manual","ver_estoque","documentar","exportar_excel","etiquetas","fila_etiquetas","scanner"],
   sac: ["account","ver_estoque","historico"],
+  b2b: ["account","ver_estoque","exportar_excel"],
+  rh: ["account","users","historico"],
   operador: ["account","ver_estoque"]
 };
 function normalizarPermissoesUser(u) {
@@ -1916,6 +1920,8 @@ function editarUsuario(i) {
           <option value="operador" ${u.role === "operador" ? "selected" : ""}>Operador</option>
           <option value="conferente" ${u.role === "conferente" ? "selected" : ""}>Conferente</option>
           <option value="sac" ${u.role === "sac" ? "selected" : ""}>SAC</option>
+          <option value="b2b" ${u.role === "b2b" ? "selected" : ""}>B2B</option>
+          <option value="rh" ${u.role === "rh" ? "selected" : ""}>RH</option>
           <option value="admin" ${u.role === "admin" ? "selected" : ""}>Admin</option>
         </select>
       </div>

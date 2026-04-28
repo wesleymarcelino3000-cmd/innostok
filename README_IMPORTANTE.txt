@@ -153,3 +153,10 @@ Atualização:
 - efeito hover premium
 - efeito pulse no clique
 - ripple suave nos botões do menu lateral
+
+Atualização:
+- adicionados os níveis B2B e RH em criar usuário
+- adicionados os níveis B2B e RH em editar usuário
+- permissões padrão:
+  B2B: Minha conta, Ver estoque, Exportar Excel
+  RH: Minha conta, Usuários, Histórico
